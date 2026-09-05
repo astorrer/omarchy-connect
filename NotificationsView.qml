@@ -145,28 +145,16 @@ ColumnLayout {
     Layout.fillWidth: true
     spacing: Style.space(8)
 
-    CursorSurface {
+    Button {
       id: backButton
-      hasCursor: false
+      text: root.page === "list" ? "Devices" : "Notifications"
+      iconText: "󰁍"
+      bordered: true
       foreground: root.foreground
-      implicitWidth: backLabel.implicitWidth + Style.space(12)
-      implicitHeight: backLabel.implicitHeight + Style.space(8)
-      MouseArea {
-        anchors.fill: parent
-        hoverEnabled: true
-        cursorShape: Qt.PointingHandCursor
-        onClicked: {
-          if (root.page === "list") root.backRequested()
-          else root.openList()
-        }
-      }
-      Text {
-        id: backLabel
-        anchors.centerIn: parent
-        text: root.page === "list" ? "Devices" : "Notifications"
-        color: root.foreground
-        font.family: root.fontFamily
-        font.pixelSize: Style.font.body
+      fontFamily: root.fontFamily
+      onClicked: {
+        if (root.page === "list") root.backRequested()
+        else root.openList()
       }
     }
 
@@ -178,6 +166,11 @@ ColumnLayout {
       font.pixelSize: Style.font.body
       elide: Text.ElideRight
     }
+  }
+
+  PanelSeparator {
+    Layout.fillWidth: true
+    foreground: root.foreground
   }
 
   Text {
@@ -325,31 +318,33 @@ ColumnLayout {
       }
     }
 
-    CursorSurface {
+    PanelSeparator {
+      width: parent.width
+      visible: root.hasDismissable
+      foreground: root.foreground
+    }
+
+    Button {
       id: dismissAllRow
       visible: root.hasDismissable
       width: parent.width
-      hasCursor: root.cursorActive && root.page === "list" && root.listIndex === root.notifications.length
+      leftAlign: true
+      text: "Dismiss all"
+      iconText: "󰆴"
+      bordered: true
       foreground: root.foreground
-      implicitHeight: Style.space(32)
-      MouseArea {
-        anchors.fill: parent
-        hoverEnabled: true
-        cursorShape: Qt.PointingHandCursor
-        onEntered: { root.cursorActive = true; root.listIndex = root.notifications.length }
-        onClicked: if (root.service) root.service.dismissAllNotifications(root.deviceId)
-      }
-      Text {
-        anchors.verticalCenter: parent.verticalCenter
-        anchors.left: parent.left
-        anchors.leftMargin: Style.space(10)
-        text: "󰆴  Dismiss all"
-        color: root.foreground
-        font.family: root.fontFamily
-        font.pixelSize: Style.font.body
-      }
+      fontFamily: root.fontFamily
+      hasCursor: root.cursorActive && root.page === "list" && root.listIndex === root.notifications.length
+      onClicked: if (root.service) root.service.dismissAllNotifications(root.deviceId)
+      onHovered: function(on) { if (on) { root.cursorActive = true; root.listIndex = root.notifications.length } }
     }
     }
+  }
+
+  PanelSeparator {
+    visible: root.page === "reply"
+    Layout.fillWidth: true
+    foreground: root.foreground
   }
 
   Column {

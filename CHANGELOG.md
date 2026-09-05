@@ -1,5 +1,9 @@
 # Changelog
 
+## 1.2.7
+
+Back, new message, and dismiss-all are framed buttons. A rule sits under the header and above the reply field.
+
 ## 1.2.6
 
 Unpair asks Cancel / Unpair in the panel before dropping the phone. Cancel is selected first.

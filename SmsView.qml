@@ -236,28 +236,16 @@ ColumnLayout {
     Layout.fillWidth: true
     spacing: Style.space(8)
 
-    CursorSurface {
+    Button {
       id: backButton
-      hasCursor: false
+      text: root.page === "inbox" ? "Devices" : "Inbox"
+      iconText: "󰁍"
+      bordered: true
       foreground: root.foreground
-      implicitWidth: backLabel.implicitWidth + Style.space(12)
-      implicitHeight: backLabel.implicitHeight + Style.space(8)
-      MouseArea {
-        anchors.fill: parent
-        hoverEnabled: true
-        cursorShape: Qt.PointingHandCursor
-        onClicked: {
-          if (root.page === "inbox") root.backRequested()
-          else root.openInbox()
-        }
-      }
-      Text {
-        id: backLabel
-        anchors.centerIn: parent
-        text: root.page === "inbox" ? "Devices" : "Inbox"
-        color: root.foreground
-        font.family: root.fontFamily
-        font.pixelSize: Style.font.body
+      fontFamily: root.fontFamily
+      onClicked: {
+        if (root.page === "inbox") root.backRequested()
+        else root.openInbox()
       }
     }
 
@@ -269,6 +257,11 @@ ColumnLayout {
       font.pixelSize: Style.font.body
       elide: Text.ElideRight
     }
+  }
+
+  PanelSeparator {
+    Layout.fillWidth: true
+    foreground: root.foreground
   }
 
   Text {
@@ -321,52 +314,38 @@ ColumnLayout {
         width: parent.width
         spacing: Style.space(6)
 
-        CursorSurface {
+        Button {
           id: newRow
           width: parent.width
-          hasCursor: root.cursorActive && root.page === "inbox" && root.listIndex === 0
+          leftAlign: true
+          text: "New message"
+          iconText: "󰍩"
+          bordered: true
           foreground: root.foreground
-          implicitHeight: Style.space(32)
-          MouseArea {
-            anchors.fill: parent
-            hoverEnabled: true
-            cursorShape: Qt.PointingHandCursor
-            onEntered: { root.cursorActive = true; root.listIndex = 0 }
-            onClicked: root.openCompose()
-          }
-          Text {
-            anchors.verticalCenter: parent.verticalCenter
-            anchors.left: parent.left
-            anchors.leftMargin: Style.space(10)
-            text: "󰍩  New message"
-            color: root.foreground
-            font.family: root.fontFamily
-            font.pixelSize: Style.font.body
-          }
+          fontFamily: root.fontFamily
+          hasCursor: root.cursorActive && root.page === "inbox" && root.listIndex === 0
+          onClicked: root.openCompose()
+          onHovered: function(on) { if (on) { root.cursorActive = true; root.listIndex = 0 } }
         }
 
-        CursorSurface {
+        Button {
           id: appRow
           width: parent.width
-          hasCursor: root.cursorActive && root.page === "inbox" && root.listIndex === 1
+          leftAlign: true
+          text: "Open SMS app"
+          iconText: "󰏌"
+          bordered: true
           foreground: root.foreground
-          implicitHeight: Style.space(32)
-          MouseArea {
-            anchors.fill: parent
-            hoverEnabled: true
-            cursorShape: Qt.PointingHandCursor
-            onEntered: { root.cursorActive = true; root.listIndex = 1 }
-            onClicked: if (root.service) root.service.smsApp(root.deviceId)
-          }
-          Text {
-            anchors.verticalCenter: parent.verticalCenter
-            anchors.left: parent.left
-            anchors.leftMargin: Style.space(10)
-            text: "󰏌  Open SMS app"
-            color: root.dim
-            font.family: root.fontFamily
-            font.pixelSize: Style.font.body
-          }
+          fontFamily: root.fontFamily
+          hasCursor: root.cursorActive && root.page === "inbox" && root.listIndex === 1
+          onClicked: if (root.service) root.service.smsApp(root.deviceId)
+          onHovered: function(on) { if (on) { root.cursorActive = true; root.listIndex = 1 } }
+        }
+
+        PanelSeparator {
+          width: parent.width
+          visible: root.conversations.length > 0 || !root.loading
+          foreground: root.foreground
         }
 
         Text {
@@ -608,6 +587,12 @@ ColumnLayout {
         }
       }
     }
+  }
+
+  PanelSeparator {
+    visible: root.page === "compose" || root.page === "thread"
+    Layout.fillWidth: true
+    foreground: root.foreground
   }
 
   Column {
