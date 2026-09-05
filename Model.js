@@ -1,3 +1,6 @@
+var PLUGIN_VERSION = "1.1.0"
+var PROJECT_URL = "https://github.com/astorrer/omarchy-connect"
+
 function parseStatus(raw) {
   var text = String(raw || "").trim()
   if (text === "") return { ok: false, lastError: "Empty status" }
@@ -53,31 +56,75 @@ function primaryDevice(devices) {
 
 function actionRows(device) {
   if (!device) return []
+  var rows = []
   if (device.pairRequestedByPeer) {
-    return [
-      { id: "accept", label: "Accept pairing", icon: "󰄬" },
-      { id: "reject", label: "Decline", icon: "󰅖" }
+    rows = [
+      { id: "accept", label: "Accept", icon: "󰄬", kind: "choice" },
+      { id: "reject", label: "Decline", icon: "󰅖", kind: "choice" }
+    ]
+  } else if (!device.paired) {
+    rows = [{ id: "pair", label: "Request pairing", icon: "󰌹", kind: "choice" }]
+  } else if (!device.reachable) {
+    rows = [{ id: "unpair", label: "Unpair", icon: "󰌺", kind: "danger" }]
+  } else {
+    var notifyLabel = "Notifications"
+    var count = device.notificationCount
+    if (typeof count === "number" && count > 0) notifyLabel = "Notifications (" + count + ")"
+    rows = [
+      { id: "notifications", label: notifyLabel, icon: "󰎕", kind: "inbox" },
+      { id: "messages", label: "Messages", icon: "󰍥", kind: "inbox" },
+      { id: "ping", label: "Ping", icon: "󰐷", kind: "tool" },
+      { id: "ring", label: "Ring", icon: "󰂜", kind: "tool" },
+      { id: "clipboard", label: "Clipboard", icon: "󰅌", kind: "tool" },
+      { id: "file", label: "File", icon: "󰈔", kind: "tool" },
+      { id: "unpair", label: "Unpair", icon: "󰌺", kind: "danger" }
     ]
   }
-  if (!device.paired) {
-    return [{ id: "pair", label: "Request pairing", icon: "󰌹" }]
-  }
-  if (!device.reachable) {
-    return [{ id: "unpair", label: "Unpair", icon: "󰌺" }]
-  }
-  var notifyLabel = "Notifications"
-  var count = device.notificationCount
-  if (typeof count === "number" && count > 0) notifyLabel = "Notifications (" + count + ")"
-  var rows = [
-    { id: "notifications", label: notifyLabel, icon: "󰎕" },
-    { id: "messages", label: "Messages", icon: "󰍥" },
-    { id: "ping", label: "Ping", icon: "󰐷" },
-    { id: "ring", label: "Ring phone", icon: "󰂜" },
-    { id: "clipboard", label: "Send clipboard", icon: "󰅌" },
-    { id: "file", label: "Send file", icon: "󰈔" },
-    { id: "unpair", label: "Unpair", icon: "󰌺" }
-  ]
+  for (var i = 0; i < rows.length; i++) rows[i].index = i
   return rows
+}
+
+function actionsOfKind(actions, kind) {
+  var rows = []
+  var list = actions || []
+  for (var i = 0; i < list.length; i++) {
+    if (list[i] && list[i].kind === kind) rows.push(list[i])
+  }
+  return rows
+}
+
+function indexInKind(actions, kind, globalIndex) {
+  var n = 0
+  var list = actions || []
+  for (var i = 0; i < list.length; i++) {
+    if (!list[i] || list[i].kind !== kind) continue
+    if (i === globalIndex) return n
+    n++
+  }
+  return 0
+}
+
+function heroPhrases(device) {
+  if (!device || !device.paired || !device.reachable) return []
+  var name = String(device.name || "the phone")
+  var short = name.split(" ")[0] || name
+  var phrases = []
+  var battery = device.battery
+  var charging = device.charging === true
+  if (typeof battery === "number" && battery >= 0) {
+    if (charging) phrases.push(short + " is sipping wall power at " + battery + "%")
+    else if (battery <= 12) phrases.push(short + " is running on fumes · " + battery + "%")
+    else if (battery >= 90) phrases.push(short + " is topped up at " + battery + "%")
+    else phrases.push(short + " is wandering at " + battery + "%")
+  }
+  var n = device.notificationCount
+  if (typeof n === "number" && n > 0)
+    phrases.push(n === 1 ? "One note is waiting in the pocket" : n + " notes waiting in the pocket")
+  else phrases.push("Inbox is quiet. For now.")
+  var net = String(device.networkType || "")
+  if (net) phrases.push("On " + net + ", still in range")
+  phrases.push("Ready to ping " + short)
+  return phrases
 }
 
 function conversationTitle(conversation) {

@@ -24,9 +24,13 @@ Keys inside the panel:
 
 - Arrows or `j`/`k` move. The list follows the highlight.
 - Enter or right/`l` activate. Left/`h` or Esc go back.
-- `n` notifications · `m` messages · `d` dismiss · `p` ping · `f` ring · `c` clipboard · `s` send file · `r` refresh
+- `n` notifications · `m` messages · `d` dismiss · `p` ping · `f` ring · `c` clipboard · `s` send file · `r` refresh · `,` settings
+
+The version in the footer opens the project page.
 
 ## Settings
+
+Open from the gear in the panel:
 
 - Refresh interval
 - Hide the icon when no phone is reachable

@@ -33,21 +33,19 @@ Panel {
   readonly property var actions: Model.actionRows(selectedDevice)
 
   property int phraseIndex: 0
-  readonly property var activePhrases: [
-    "Listening for phones",
-    "Pairing pockets",
-    "Herding handsets",
-    "Bridging pockets",
-    "Finding friends",
-    "Sharing quietly"
-  ]
+  property int settingIndex: 0
+  readonly property var livePhrases: Model.heroPhrases(primary)
   readonly property string heroPhraseText: {
     if (!connect.installed) return "Not installed"
     if (!connect.active) return "Turned off"
-    if (phoneLive) return activePhrases[phraseIndex % activePhrases.length]
+    if (phoneLive && livePhrases.length > 0) return livePhrases[phraseIndex % livePhrases.length]
     if (connect.devices.length > 0) return "Waiting to pair"
     return "No devices yet"
   }
+  readonly property var inboxActions: Model.actionsOfKind(actions, "inbox")
+  readonly property var toolActions: Model.actionsOfKind(actions, "tool")
+  readonly property var choiceActions: Model.actionsOfKind(actions, "choice")
+  readonly property var dangerActions: Model.actionsOfKind(actions, "danger")
 
   property string view: "main"
   property var smsDevice: null
@@ -117,7 +115,39 @@ Panel {
       }
       return
     }
+    if (view === "settings") {
+      view = "main"
+      armCursor()
+      return
+    }
     close()
+  }
+
+  function persistSettings(values) {
+    var entry = { id: root.moduleName }
+    for (var existing in root.settings) if (existing !== "id") entry[existing] = root.settings[existing]
+    for (var key in values) entry[key] = values[key]
+    root.settings = entry
+    if (root.bar && root.bar.shell && typeof root.bar.shell.updateEntryInline === "function")
+      root.bar.shell.updateEntryInline(root.moduleName, entry)
+  }
+
+  function openSettings() {
+    view = "settings"
+    settingIndex = 0
+    cursorActive = true
+    focusSection = "settings"
+  }
+
+  function openProject() {
+    Qt.openUrlExternally(Model.PROJECT_URL)
+  }
+
+  function bumpRefresh(delta) {
+    var next = root.connect.refreshIntervalSec + delta
+    if (next < 3) next = 3
+    if (next > 120) next = 120
+    persistSettings({ refreshIntervalSec: next })
   }
 
   function scrollItemIntoView(item) {
@@ -142,7 +172,19 @@ Panel {
     if (focusSection === "setup") return setupButton
     if (focusSection === "header") return header
     if (focusSection === "devices" && deviceRepeater) return deviceRepeater.itemAt(deviceIndex)
-    if (focusSection === "actions" && actionRepeater) return actionRepeater.itemAt(actionIndex)
+    if (focusSection === "settings") {
+      if (settingIndex === 0) return badgeRow
+      if (settingIndex === 1) return hideRow
+      return intervalRow
+    }
+    if (focusSection === "actions") {
+      var action = actions[actionIndex]
+      if (!action) return null
+      if (action.kind === "inbox" && inboxRepeater) return inboxRepeater.itemAt(Model.indexInKind(actions, "inbox", actionIndex))
+      if (action.kind === "tool" && toolRepeater) return toolRepeater.itemAt(Model.indexInKind(actions, "tool", actionIndex))
+      if (action.kind === "choice" && choiceRepeater) return choiceRepeater.itemAt(Model.indexInKind(actions, "choice", actionIndex))
+      if (action.kind === "danger" && dangerRepeater) return dangerRepeater.itemAt(Model.indexInKind(actions, "danger", actionIndex))
+    }
     return null
   }
 
@@ -154,6 +196,23 @@ Panel {
 
   function moveCursor(dx, dy) {
     cursorActive = true
+    if (view === "settings") {
+      if (dx !== 0 && settingIndex === 2) {
+        bumpRefresh(dx > 0 ? 1 : -1)
+        return
+      }
+      if (dx < 0) {
+        goBack()
+        return
+      }
+      if (dx > 0) {
+        activateCursor()
+        return
+      }
+      settingIndex = Math.max(0, Math.min(2, settingIndex + dy))
+      scrollCursorIntoView()
+      return
+    }
     if (dx !== 0 && dy === 0) {
       if (dx > 0) activateCursor()
       else goBack()
@@ -207,6 +266,12 @@ Panel {
     ensureCursor()
     if (focusSection === "setup") {
       connect.setup()
+      return
+    }
+    if (focusSection === "settings") {
+      if (settingIndex === 0) persistSettings({ badgeNotifications: !root.badgeNotifications })
+      else if (settingIndex === 1) persistSettings({ hideWhenDisconnected: !root.hideWhenDisconnected })
+      else bumpRefresh(1)
       return
     }
     if (focusSection === "header") {
@@ -365,6 +430,7 @@ Panel {
         else if (t === "c" || t === "C") { if (root.selectedDevice) connect.sendClipboard(root.selectedDevice.id) }
         else if (t === "s" || t === "S") { if (root.selectedDevice) connect.shareFile(root.selectedDevice.id) }
         else if (t === "i" || t === "I") connect.setup()
+        else if (t === ",") root.openSettings()
       }
 
       Flickable {
@@ -389,7 +455,7 @@ Panel {
 
           Item {
             id: header
-            visible: connect.installed && root.view === "main"
+            visible: connect.installed && (root.view === "main" || root.view === "settings")
             width: parent.width
             implicitHeight: hero.implicitHeight
             readonly property bool ringVisible: root.headerHasCursor
@@ -539,20 +605,224 @@ Panel {
               foreground: root.foreground
             }
 
-            Column {
-              visible: root.actions.length > 0
+            Grid {
+              id: inboxGrid
+              visible: root.inboxActions.length > 0
+              width: parent.width
+              columns: Math.min(2, root.inboxActions.length)
+              columnSpacing: Style.space(6)
+              rowSpacing: Style.space(6)
+              Repeater {
+                id: inboxRepeater
+                model: root.inboxActions
+                Button {
+                  required property var modelData
+                  required property int index
+                  width: inboxGrid.columns === 1 ? inboxGrid.width : (inboxGrid.width - inboxGrid.columnSpacing) / 2
+                  iconText: modelData.icon
+                  text: modelData.label
+                  bordered: true
+                  fontFamily: root.fontFamily
+                  foreground: root.foreground
+                  hasCursor: root.cursorActive && root.focusSection === "actions" && root.actionIndex === modelData.index
+                  onClicked: root.runAction(modelData)
+                  onHovered: function(on) {
+                    if (!on) return
+                    root.cursorActive = true
+                    root.focusSection = "actions"
+                    root.actionIndex = modelData.index
+                  }
+                }
+              }
+            }
+
+            Row {
+              id: toolRow
+              visible: root.toolActions.length > 0
               width: parent.width
               spacing: Style.space(6)
-
               Repeater {
-                id: actionRepeater
-                model: root.actions
+                id: toolRepeater
+                model: root.toolActions
+                Button {
+                  required property var modelData
+                  required property int index
+                  width: toolRow.width > 0 && root.toolActions.length > 0
+                    ? (toolRow.width - toolRow.spacing * (root.toolActions.length - 1)) / root.toolActions.length
+                    : 0
+                  iconText: modelData.icon
+                  text: modelData.label
+                  fontSize: Style.font.caption
+                  iconSize: Style.font.title
+                  bordered: true
+                  fontFamily: root.fontFamily
+                  foreground: root.foreground
+                  horizontalPadding: Style.space(4)
+                  hasCursor: root.cursorActive && root.focusSection === "actions" && root.actionIndex === modelData.index
+                  onClicked: root.runAction(modelData)
+                  onHovered: function(on) {
+                    if (!on) return
+                    root.cursorActive = true
+                    root.focusSection = "actions"
+                    root.actionIndex = modelData.index
+                  }
+                }
+              }
+            }
+
+            Grid {
+              id: choiceGrid
+              visible: root.choiceActions.length > 0
+              width: parent.width
+              columns: Math.min(2, Math.max(1, root.choiceActions.length))
+              columnSpacing: Style.space(6)
+              rowSpacing: Style.space(6)
+              Repeater {
+                id: choiceRepeater
+                model: root.choiceActions
+                Button {
+                  required property var modelData
+                  required property int index
+                  width: choiceGrid.columns === 1 ? choiceGrid.width : (choiceGrid.width - choiceGrid.columnSpacing) / 2
+                  iconText: modelData.icon
+                  text: modelData.label
+                  bordered: true
+                  fontFamily: root.fontFamily
+                  foreground: root.foreground
+                  hasCursor: root.cursorActive && root.focusSection === "actions" && root.actionIndex === modelData.index
+                  onClicked: root.runAction(modelData)
+                  onHovered: function(on) {
+                    if (!on) return
+                    root.cursorActive = true
+                    root.focusSection = "actions"
+                    root.actionIndex = modelData.index
+                  }
+                }
+              }
+            }
+
+            Column {
+              visible: root.dangerActions.length > 0
+              width: parent.width
+              Repeater {
+                id: dangerRepeater
+                model: root.dangerActions
                 ActionRow {
                   required property var modelData
                   required property int index
                   width: parent.width
                   action: modelData
-                  rowIndex: index
+                  rowIndex: modelData.index
+                }
+              }
+            }
+
+            Item {
+              width: parent.width
+              implicitHeight: footerRow.implicitHeight
+              RowLayout {
+                id: footerRow
+                anchors.left: parent.left
+                anchors.right: parent.right
+                spacing: Style.space(8)
+                Text {
+                  text: "Connect " + Model.PLUGIN_VERSION
+                  color: root.dim
+                  font.family: root.fontFamily
+                  font.pixelSize: Style.font.caption
+                  MouseArea {
+                    anchors.fill: parent
+                    hoverEnabled: true
+                    cursorShape: Qt.PointingHandCursor
+                    onClicked: root.openProject()
+                  }
+                }
+                Item { Layout.fillWidth: true }
+                PanelActionButton {
+                  iconText: "󰒓"
+                  tooltipText: "Settings"
+                  foreground: root.foreground
+                  fontFamily: root.fontFamily
+                  hasCursor: root.cursorActive && root.focusSection === "footer"
+                  onClicked: root.openSettings()
+                  onHovered: function(on) {
+                    if (!on) return
+                    root.cursorActive = true
+                    root.focusSection = "footer"
+                  }
+                }
+              }
+            }
+          }
+
+          Column {
+            visible: connect.installed && root.view === "settings"
+            width: parent.width
+            spacing: Style.space(10)
+
+            PanelSectionHeader {
+              text: "SETTINGS"
+              foreground: root.foreground
+              fontFamily: root.fontFamily
+            }
+
+            SettingToggle {
+              id: badgeRow
+              width: parent.width
+              label: "Badge the bar for notifications"
+              checked: root.badgeNotifications
+              rowIndex: 0
+              onClicked: root.persistSettings({ badgeNotifications: !root.badgeNotifications })
+            }
+
+            SettingToggle {
+              id: hideRow
+              width: parent.width
+              label: "Hide when no phone is reachable"
+              checked: root.hideWhenDisconnected
+              rowIndex: 1
+              onClicked: root.persistSettings({ hideWhenDisconnected: !root.hideWhenDisconnected })
+            }
+
+            CursorSurface {
+              id: intervalRow
+              width: parent.width
+              hasCursor: root.cursorActive && root.focusSection === "settings" && root.settingIndex === 2
+              foreground: root.foreground
+              implicitHeight: intervalInner.implicitHeight + Style.spacing.rowPaddingX
+              MouseArea {
+                anchors.fill: parent
+                hoverEnabled: true
+                onEntered: { root.cursorActive = true; root.focusSection = "settings"; root.settingIndex = 2 }
+              }
+              RowLayout {
+                id: intervalInner
+                anchors.left: parent.left
+                anchors.right: parent.right
+                anchors.verticalCenter: parent.verticalCenter
+                anchors.leftMargin: Style.space(10)
+                anchors.rightMargin: Style.space(10)
+                spacing: Style.space(8)
+                Text {
+                  text: "Refresh every " + connect.refreshIntervalSec + "s"
+                  color: root.foreground
+                  font.family: root.fontFamily
+                  font.pixelSize: Style.font.body
+                  Layout.fillWidth: true
+                }
+                PanelActionButton {
+                  iconText: "−"
+                  tooltipText: "Faster"
+                  foreground: root.foreground
+                  fontFamily: root.fontFamily
+                  onClicked: root.bumpRefresh(-1)
+                }
+                PanelActionButton {
+                  iconText: "+"
+                  tooltipText: "Slower"
+                  foreground: root.foreground
+                  fontFamily: root.fontFamily
+                  onClicked: root.bumpRefresh(1)
                 }
               }
             }
@@ -580,7 +850,10 @@ Panel {
       easing.type: Easing.OutQuad
     }
     ScriptAction {
-      script: root.phraseIndex = (root.phraseIndex + 1) % root.activePhrases.length
+      script: {
+        var n = root.livePhrases.length
+        root.phraseIndex = n > 0 ? (root.phraseIndex + 1) % n : 0
+      }
     }
     PropertyAnimation {
       target: hero
@@ -706,6 +979,50 @@ Panel {
           elide: Text.ElideRight
           Layout.fillWidth: true
         }
+      }
+    }
+  }
+
+  component SettingToggle: CursorSurface {
+    id: settingRow
+    property string label: ""
+    property bool checked: false
+    property int rowIndex: 0
+    signal clicked()
+    hasCursor: root.cursorActive && root.focusSection === "settings" && root.settingIndex === rowIndex
+    foreground: root.foreground
+    implicitHeight: settingInner.implicitHeight + Style.spacing.rowPaddingX
+    MouseArea {
+      anchors.fill: parent
+      hoverEnabled: true
+      cursorShape: Qt.PointingHandCursor
+      onEntered: {
+        root.cursorActive = true
+        root.focusSection = "settings"
+        root.settingIndex = settingRow.rowIndex
+      }
+      onClicked: settingRow.clicked()
+    }
+    RowLayout {
+      id: settingInner
+      anchors.left: parent.left
+      anchors.right: parent.right
+      anchors.verticalCenter: parent.verticalCenter
+      anchors.leftMargin: Style.space(10)
+      anchors.rightMargin: Style.space(10)
+      spacing: Style.space(8)
+      Text {
+        text: settingRow.label
+        color: root.foreground
+        font.family: root.fontFamily
+        font.pixelSize: Style.font.body
+        wrapMode: Text.WordWrap
+        Layout.fillWidth: true
+      }
+      ToggleSwitch {
+        checked: settingRow.checked
+        foreground: root.foreground
+        hasCursor: settingRow.hasCursor
       }
     }
   }
