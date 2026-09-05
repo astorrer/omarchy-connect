@@ -35,6 +35,8 @@ function deviceMeta(device) {
   var battery = batteryText(device)
   if (battery) parts.push(battery)
   if (device.networkType) parts.push(String(device.networkType))
+  if (typeof device.notificationCount === "number" && device.notificationCount > 0)
+    parts.push(device.notificationCount === 1 ? "1 notification" : device.notificationCount + " notifications")
   return parts.length ? parts.join(" · ") : "Connected"
 }
 

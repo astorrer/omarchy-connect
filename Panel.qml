@@ -14,6 +14,7 @@ Panel {
   manageIpc: false
 
   readonly property bool hideWhenDisconnected: !!setting("hideWhenDisconnected", false)
+  readonly property bool badgeNotifications: setting("badgeNotifications", true) !== false
   readonly property color foreground: bar ? bar.foreground : Color.foreground
   readonly property color urgent: bar ? bar.urgent : Color.urgent
   readonly property color dim: Qt.darker(foreground, 1.55)
@@ -213,7 +214,10 @@ Panel {
       return
     }
     if (focusSection === "devices") {
-      runAction({ id: "messages" })
+      if (actions.length > 0) {
+        actionIndex = 0
+        runAction(actions[0])
+      }
       return
     }
     if (focusSection === "actions") runAction(actions[actionIndex])
@@ -299,6 +303,7 @@ Panel {
     id: button
     anchors.fill: parent
     bar: root.bar
+    tooltipText: "Connect"
     iconComponent: Component {
       Item {
         ConnectIcon {
@@ -306,7 +311,7 @@ Panel {
           iconSize: Style.space(12)
           color: root.barIconColor
           dimmed: !root.phoneLive
-          badge: !!(root.primary && (root.primary.pairRequestedByPeer || root.primary.notificationCount > 0))
+          badge: !!(root.primary && (root.primary.pairRequestedByPeer || (root.badgeNotifications && root.primary.notificationCount > 0)))
         }
       }
     }
@@ -339,7 +344,13 @@ Panel {
       onCloseRequested: root.goBack()
       onTabRequested: function(direction) { root.switchPanel(direction) }
       onTextKey: function(t) {
-        if (t === "r" || t === "R") connect.refresh()
+        if (t === "r" || t === "R") {
+          connect.refresh()
+          if (root.view === "notifications" && root.selectedDevice)
+            connect.loadNotifications(root.selectedDevice.id)
+          else if (root.view === "sms" && smsView.page === "inbox" && root.selectedDevice)
+            connect.loadConversations(root.selectedDevice.id)
+        }
         else if (t === "m" || t === "M") {
           if (root.selectedDevice) root.runAction({ id: "messages" })
         }
@@ -653,6 +664,7 @@ Panel {
     MouseArea {
       anchors.fill: parent
       hoverEnabled: true
+      cursorShape: Qt.PointingHandCursor
       onEntered: root.setDeviceCursor(deviceRow.rowIndex)
       onClicked: root.setDeviceCursor(deviceRow.rowIndex)
     }

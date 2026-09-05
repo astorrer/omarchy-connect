@@ -31,6 +31,8 @@ Column {
   signal backRequested()
   signal releaseEditor()
 
+  onNotificationsChanged: listIndex = Math.max(0, Math.min(listMax(), listIndex))
+
   width: parent ? parent.width : 0
   spacing: Style.space(10)
 
@@ -54,20 +56,19 @@ Column {
 
   function listMax() {
     if (notifications.length === 0) return 0
-    return (hasDismissable ? 1 : 0) + notifications.length - 1
+    return notifications.length - 1 + (hasDismissable ? 1 : 0)
   }
 
   function currentItem() {
     if (page === "reply") return draftField
-    if (hasDismissable && listIndex === 0) return dismissAllRow
-    var offset = hasDismissable ? 1 : 0
-    if (notifRepeater) return notifRepeater.itemAt(listIndex - offset)
+    if (hasDismissable && listIndex === notifications.length) return dismissAllRow
+    if (notifRepeater) return notifRepeater.itemAt(listIndex)
     return backButton
   }
 
   function notificationAtCursor() {
-    var offset = hasDismissable ? 1 : 0
-    return notifications[listIndex - offset]
+    if (listIndex < 0 || listIndex >= notifications.length) return null
+    return notifications[listIndex]
   }
 
   function moveList(dy) {
@@ -82,7 +83,7 @@ Column {
       sendDraft()
       return
     }
-    if (hasDismissable && listIndex === 0) {
+    if (hasDismissable && listIndex === notifications.length) {
       if (service) service.dismissAllNotifications(deviceId)
       return
     }
@@ -93,7 +94,7 @@ Column {
 
   function dismissCurrent() {
     if (page !== "list" || !service) return
-    if (hasDismissable && listIndex === 0) {
+    if (hasDismissable && listIndex === notifications.length) {
       service.dismissAllNotifications(deviceId)
       return
     }
@@ -131,7 +132,7 @@ Column {
       Text {
         id: backLabel
         anchors.centerIn: parent
-        text: root.page === "list" ? "Devices" : "Inbox"
+        text: root.page === "list" ? "Devices" : "Notifications"
         color: root.foreground
         font.family: root.fontFamily
         font.pixelSize: Style.font.body
@@ -162,31 +163,6 @@ Column {
     width: parent.width
     spacing: Style.space(6)
 
-    CursorSurface {
-      id: dismissAllRow
-      visible: root.hasDismissable
-      width: parent.width
-      hasCursor: root.cursorActive && root.page === "list" && root.listIndex === 0
-      foreground: root.foreground
-      implicitHeight: Style.space(32)
-      MouseArea {
-        anchors.fill: parent
-        hoverEnabled: true
-        cursorShape: Qt.PointingHandCursor
-        onEntered: { root.cursorActive = true; root.listIndex = 0 }
-        onClicked: if (root.service) root.service.dismissAllNotifications(root.deviceId)
-      }
-      Text {
-        anchors.verticalCenter: parent.verticalCenter
-        anchors.left: parent.left
-        anchors.leftMargin: Style.space(10)
-        text: "󰆴  Dismiss all"
-        color: root.foreground
-        font.family: root.fontFamily
-        font.pixelSize: Style.font.body
-      }
-    }
-
     Text {
       visible: !root.loading && root.notifications.length === 0
       width: parent.width
@@ -205,7 +181,7 @@ Column {
         required property var modelData
         required property int index
         width: parent.width
-        hasCursor: root.cursorActive && root.page === "list" && root.listIndex === index + (root.hasDismissable ? 1 : 0)
+        hasCursor: root.cursorActive && root.page === "list" && root.listIndex === index
         foreground: root.foreground
         implicitHeight: notifInner.implicitHeight + Style.spacing.rowPaddingX
         MouseArea {
@@ -214,10 +190,10 @@ Column {
           cursorShape: Qt.PointingHandCursor
           onEntered: {
             root.cursorActive = true
-            root.listIndex = notifRow.index + (root.hasDismissable ? 1 : 0)
+            root.listIndex = notifRow.index
           }
           onClicked: {
-            root.listIndex = notifRow.index + (root.hasDismissable ? 1 : 0)
+            root.listIndex = notifRow.index
             if (notifRow.modelData && notifRow.modelData.canReply) root.openReply(notifRow.modelData)
           }
         }
@@ -271,6 +247,31 @@ Column {
             }
           }
         }
+      }
+    }
+
+    CursorSurface {
+      id: dismissAllRow
+      visible: root.hasDismissable
+      width: parent.width
+      hasCursor: root.cursorActive && root.page === "list" && root.listIndex === root.notifications.length
+      foreground: root.foreground
+      implicitHeight: Style.space(32)
+      MouseArea {
+        anchors.fill: parent
+        hoverEnabled: true
+        cursorShape: Qt.PointingHandCursor
+        onEntered: { root.cursorActive = true; root.listIndex = root.notifications.length }
+        onClicked: if (root.service) root.service.dismissAllNotifications(root.deviceId)
+      }
+      Text {
+        anchors.verticalCenter: parent.verticalCenter
+        anchors.left: parent.left
+        anchors.leftMargin: Style.space(10)
+        text: "󰆴  Dismiss all"
+        color: root.foreground
+        font.family: root.fontFamily
+        font.pixelSize: Style.font.body
       }
     }
   }

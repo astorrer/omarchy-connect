@@ -1,5 +1,9 @@
 # Changelog
 
+## 1.0.0
+
+Publish polish. Enter on a device opens the first action. Refresh reloads the open inbox. Dismiss-all sits at the bottom of the notification list. Optional bar badge for phone notifications.
+
 ## 0.4.0
 
 Notification feed from the phone's KDE Connect notifications plugin.
