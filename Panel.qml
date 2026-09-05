@@ -222,8 +222,8 @@ Panel {
     }
     if (view === "sms") {
       if (dx !== 0 && dy === 0) {
-        if (smsView.page === "inbox" && smsView.listIndex <= 1) {
-          if (smsView.listIndex === 0 && dx < 0) {
+        if (smsView.inboxToolsFocused) {
+          if (smsView.listIndex === smsView.inboxToolStart && dx < 0) {
             goBack()
             return
           }

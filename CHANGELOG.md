@@ -1,5 +1,9 @@
 # Changelog
 
+## 1.2.16
+
+New message and SMS app stay at the bottom of the inbox, like the reply field in a thread.
+
 ## 1.2.15
 
 New message and SMS app sit side by side in the inbox. Left and right walk those two; down enters the list.

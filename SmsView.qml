@@ -31,6 +31,8 @@ ColumnLayout {
   readonly property bool composing: page === "compose" || page === "thread"
   readonly property bool editorFocused: toField.activeFocus || draftField.activeFocus
   readonly property int listCount: page === "inbox" ? conversations.length + 2 : messages.length
+  readonly property int inboxToolStart: conversations.length
+  readonly property bool inboxToolsFocused: page === "inbox" && listIndex >= inboxToolStart
 
   signal backRequested()
   signal releaseEditor()
@@ -114,7 +116,7 @@ ColumnLayout {
 
   function scrollCursorIntoView() {
     var item = currentItem()
-    if (!item || item === draftField || item === toField || item === backButton) return
+    if (!item || item === draftField || item === toField || item === backButton || item === newRow || item === appRow) return
     Qt.callLater(function() { Model.scrollFlickToItem(threadFlick, item, Style.space(8)) })
   }
 
@@ -128,9 +130,9 @@ ColumnLayout {
 
   function currentItem() {
     if (page === "inbox") {
-      if (listIndex === 0) return newRow
-      if (listIndex === 1) return appRow
-      if (convRepeater) return convRepeater.itemAt(listIndex - 2)
+      if (listIndex === inboxToolStart) return newRow
+      if (listIndex === inboxToolStart + 1) return appRow
+      if (convRepeater) return convRepeater.itemAt(listIndex)
     }
     if (page === "thread") {
       if (listIndex < messages.length && msgRepeater) return msgRepeater.itemAt(listIndex)
@@ -166,18 +168,19 @@ ColumnLayout {
       return
     }
     if (dx !== 0 && dy === 0) {
-      if (listIndex === 0 && dx > 0) listIndex = 1
-      else if (listIndex === 1 && dx < 0) listIndex = 0
+      if (listIndex === inboxToolStart && dx > 0) listIndex = inboxToolStart + 1
+      else if (listIndex === inboxToolStart + 1 && dx < 0) listIndex = inboxToolStart
       return
     }
     if (dy === 0) return
-    if (listIndex <= 1) {
-      if (dy > 0 && conversations.length > 0) listIndex = 2
+    if (listIndex >= inboxToolStart) {
+      if (dy < 0 && inboxToolStart > 0) listIndex = inboxToolStart - 1
       return
     }
     var next = listIndex + dy
-    if (next < 2) listIndex = 0
-    else listIndex = Math.min(inboxMax(), next)
+    if (next < 0) listIndex = 0
+    else if (next >= inboxToolStart) listIndex = inboxToolStart
+    else listIndex = next
   }
 
   function activateList() {
@@ -196,15 +199,15 @@ ColumnLayout {
       }
       return
     }
-    if (listIndex === 0) {
+    if (listIndex === inboxToolStart) {
       openCompose()
       return
     }
-    if (listIndex === 1) {
+    if (listIndex === inboxToolStart + 1) {
       if (service) service.smsApp(deviceId)
       return
     }
-    var conv = conversations[listIndex - 2]
+    var conv = conversations[listIndex]
     if (conv) openThread(conv)
   }
 
@@ -327,44 +330,6 @@ ColumnLayout {
         width: parent.width
         spacing: Style.space(6)
 
-        Row {
-          id: inboxTools
-          width: parent.width
-          spacing: Style.space(6)
-
-          Button {
-            id: newRow
-            width: (inboxTools.width - inboxTools.spacing) / 2
-            text: "New message"
-            iconText: "󰍩"
-            bordered: true
-            foreground: root.foreground
-            fontFamily: root.fontFamily
-            hasCursor: root.cursorActive && root.page === "inbox" && root.listIndex === 0
-            onClicked: root.openCompose()
-            onHovered: function(on) { if (on) { root.cursorActive = true; root.listIndex = 0 } }
-          }
-
-          Button {
-            id: appRow
-            width: (inboxTools.width - inboxTools.spacing) / 2
-            text: "SMS app"
-            iconText: "󰏌"
-            bordered: true
-            foreground: root.foreground
-            fontFamily: root.fontFamily
-            hasCursor: root.cursorActive && root.page === "inbox" && root.listIndex === 1
-            onClicked: if (root.service) root.service.smsApp(root.deviceId)
-            onHovered: function(on) { if (on) { root.cursorActive = true; root.listIndex = 1 } }
-          }
-        }
-
-        PanelSeparator {
-          width: parent.width
-          visible: root.conversations.length > 0 || !root.loading
-          foreground: root.foreground
-        }
-
         Text {
           visible: !root.loading && root.conversations.length === 0
           width: parent.width
@@ -383,14 +348,14 @@ ColumnLayout {
             required property var modelData
             required property int index
             width: parent.width
-            hasCursor: root.cursorActive && root.page === "inbox" && root.listIndex === index + 2
+            hasCursor: root.cursorActive && root.page === "inbox" && root.listIndex === index
             foreground: root.foreground
             implicitHeight: convInner.implicitHeight + Style.spacing.rowPaddingX
             MouseArea {
               anchors.fill: parent
               hoverEnabled: true
               cursorShape: Qt.PointingHandCursor
-              onEntered: { root.cursorActive = true; root.listIndex = convRow.index + 2 }
+              onEntered: { root.cursorActive = true; root.listIndex = convRow.index }
               onClicked: root.openThread(convRow.modelData)
             }
             RowLayout {
@@ -607,9 +572,42 @@ ColumnLayout {
   }
 
   PanelSeparator {
-    visible: root.page === "compose" || root.page === "thread"
+    visible: root.page === "compose" || root.page === "thread" || root.page === "inbox"
     Layout.fillWidth: true
     foreground: root.foreground
+  }
+
+  Row {
+    id: inboxTools
+    visible: root.page === "inbox"
+    Layout.fillWidth: true
+    spacing: Style.space(6)
+
+    Button {
+      id: newRow
+      width: (inboxTools.width - inboxTools.spacing) / 2
+      text: "New message"
+      iconText: "󰍩"
+      bordered: true
+      foreground: root.foreground
+      fontFamily: root.fontFamily
+      hasCursor: root.cursorActive && root.page === "inbox" && root.listIndex === root.inboxToolStart
+      onClicked: root.openCompose()
+      onHovered: function(on) { if (on) { root.cursorActive = true; root.listIndex = root.inboxToolStart } }
+    }
+
+    Button {
+      id: appRow
+      width: (inboxTools.width - inboxTools.spacing) / 2
+      text: "SMS app"
+      iconText: "󰏌"
+      bordered: true
+      foreground: root.foreground
+      fontFamily: root.fontFamily
+      hasCursor: root.cursorActive && root.page === "inbox" && root.listIndex === root.inboxToolStart + 1
+      onClicked: if (root.service) root.service.smsApp(root.deviceId)
+      onHovered: function(on) { if (on) { root.cursorActive = true; root.listIndex = root.inboxToolStart + 1 } }
+    }
   }
 
   Column {
