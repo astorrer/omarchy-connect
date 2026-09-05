@@ -17,6 +17,9 @@ Item {
   property var messages: []
   property var _smsQueue: []
   property bool smsLoading: false
+  property bool smsHasMore: true
+  property string smsDeviceId: ""
+  property var smsThreadId: null
   property bool refreshing: false
   property string actionStatus: ""
   property string lastError: ""
@@ -126,12 +129,33 @@ Item {
     runSms("conversations", ["conversations", id])
   }
 
+  function mergeMessages(incoming) {
+    var byId = {}
+    var i
+    for (i = 0; i < messages.length; i++) byId[String(messages[i].id)] = messages[i]
+    for (i = 0; i < incoming.length; i++) byId[String(incoming[i].id)] = incoming[i]
+    var rows = []
+    for (var key in byId) rows.push(byId[key])
+    rows.sort(function(a, b) { return (a.date || 0) - (b.date || 0) })
+    messages = rows
+  }
+
   function loadThread(id, threadId, seed) {
     if (!id || threadId === undefined || threadId === null || threadId === "") return
-    var preview = []
-    if (seed && (seed.body || seed.attachmentCount)) preview = [seed]
-    _smsQueue = _smsQueue.filter(function(item) { return item.kind !== "thread" })
-    runSms("thread", ["conversation", id, String(threadId)], preview)
+    smsDeviceId = id
+    smsThreadId = threadId
+    smsHasMore = true
+    lastError = ""
+    _smsQueue = _smsQueue.filter(function(item) { return item.kind !== "older" && item.kind !== "thread" })
+    messages = (seed && (seed.body || seed.attachmentCount)) ? [seed] : []
+    loadOlder(id, threadId)
+  }
+
+  function loadOlder(id, threadId) {
+    if (!id || threadId === undefined || threadId === null || threadId === "") return
+    if (smsHasMore === false) return
+    var have = messages.length
+    runSms("older", ["conversation", id, String(threadId), String(have), String(have + 12)])
   }
 
   function smsReply(id, threadId, text) {
@@ -262,11 +286,17 @@ Item {
     onExited: function() {
       var parsed = Model.parseStatus(smsStdout.text)
       if (parsed && parsed.ok === false) {
-        root.lastError = String(parsed.error || parsed.lastError || "SMS failed")
+        var err = String(parsed.error || parsed.lastError || "SMS failed")
+        if (err.toLowerCase().indexOf("timeout") === -1) root.lastError = err
       } else {
         root.lastError = ""
         if (smsProcess._kind === "conversations") root.conversations = parsed.conversations || []
         else if (smsProcess._kind === "thread") root.messages = parsed.messages || []
+        else if (smsProcess._kind === "older") {
+          var before = root.messages.length
+          root.mergeMessages(parsed.messages || [])
+          if (root.messages.length <= before) root.smsHasMore = false
+        }
       }
       if (root._smsQueue.length > 0) {
         var next = root._smsQueue.shift()

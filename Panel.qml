@@ -54,6 +54,17 @@ Panel {
   property int deviceIndex: 0
   property int actionIndex: 0
   property bool cursorActive: false
+  property real _savedY: 0
+  property real _savedH: 0
+  property bool _keepScroll: false
+
+  function pinThreadBottom() {
+    Qt.callLater(function() {
+      Qt.callLater(function() {
+        panelFlick.contentY = Math.max(0, panelFlick.contentHeight - panelFlick.height)
+      })
+    })
+  }
 
   implicitWidth: button.implicitWidth
   implicitHeight: button.implicitHeight
@@ -185,6 +196,22 @@ Panel {
     settings: root.settings
   }
 
+  Connections {
+    target: connect
+    function onMessagesChanged() {
+      if (root.view !== "sms" || smsView.page !== "thread") return
+      if (smsView.pinToNewest) {
+        smsView.listIndex = Math.max(smsView.listIndex, (connect.messages || []).length)
+        root.pinThreadBottom()
+      } else if (root._keepScroll) {
+        Qt.callLater(function() {
+          panelFlick.contentY = Math.max(0, root._savedY + (panelFlick.contentHeight - root._savedH))
+          root._keepScroll = false
+        })
+      }
+    }
+  }
+
   IpcHandler {
     target: root.ipcTarget
     function open(): void { root.open() }
@@ -272,6 +299,10 @@ Panel {
         flickableDirection: Flickable.VerticalFlick
         interactive: contentHeight > height
         ScrollBar.vertical: ScrollBar { policy: ScrollBar.AsNeeded }
+        onContentYChanged: {
+          if (root.view === "sms" && smsView.page === "thread" && contentY < 48)
+            smsView.loadOlder()
+        }
 
         Column {
           id: column
@@ -356,6 +387,12 @@ Panel {
               Qt.callLater(function() { keyCatcher.forceActiveFocus() })
             }
             onReleaseEditor: Qt.callLater(function() { keyCatcher.forceActiveFocus() })
+            onScrollToEnd: root.pinThreadBottom()
+            onPreserveScroll: {
+              root._savedY = panelFlick.contentY
+              root._savedH = panelFlick.contentHeight
+              root._keepScroll = true
+            }
           }
 
           Column {

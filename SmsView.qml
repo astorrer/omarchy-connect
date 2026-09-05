@@ -17,6 +17,7 @@ Column {
   property int listIndex: 0
   property string draft: ""
   property string composeTo: ""
+  property bool pinToNewest: true
 
   readonly property var conversations: service ? (service.conversations || []) : []
   readonly property var messages: service ? (service.messages || []) : []
@@ -28,6 +29,8 @@ Column {
 
   signal backRequested()
   signal releaseEditor()
+  signal scrollToEnd()
+  signal preserveScroll()
 
   width: parent ? parent.width : 0
   spacing: Style.space(10)
@@ -45,10 +48,20 @@ Column {
     thread = conversation
     page = "thread"
     draft = ""
-    listIndex = 0
     cursorActive = true
+    pinToNewest = true
     if (deviceId !== "" && conversation) service.loadThread(deviceId, conversation.threadId, conversation)
+    listIndex = Math.max(0, (service.messages || []).length)
     releaseEditor()
+    scrollToEnd()
+  }
+
+  function loadOlder() {
+    if (!service || !thread || service.smsLoading) return
+    if (service.smsHasMore === false) return
+    pinToNewest = false
+    preserveScroll()
+    service.loadOlder(deviceId, thread.threadId)
   }
 
   function openCompose() {
@@ -78,6 +91,10 @@ Column {
       return
     }
     if (page === "thread") {
+      if (dy < 0 && listIndex === 0) {
+        loadOlder()
+        return
+      }
       var tMax = threadMax()
       listIndex = Math.max(0, Math.min(tMax, listIndex + dy))
       if (listIndex === tMax) draftField.forceActiveFocus()
@@ -309,6 +326,21 @@ Column {
     visible: root.page === "thread"
     width: parent.width
     spacing: Style.space(6)
+
+    Text {
+      visible: root.service && root.service.smsHasMore !== false
+      width: parent.width
+      text: root.loading ? "Loading older…" : "Scroll up for older messages"
+      color: root.dim
+      font.family: root.fontFamily
+      font.pixelSize: Style.font.caption
+      MouseArea {
+        anchors.fill: parent
+        enabled: !root.loading
+        cursorShape: Qt.PointingHandCursor
+        onClicked: root.loadOlder()
+      }
+    }
 
     Text {
       visible: !root.loading && root.messages.length === 0

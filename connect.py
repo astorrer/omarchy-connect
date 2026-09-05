@@ -85,7 +85,15 @@ def name_has_owner(bus, name: str) -> bool:
         return False
 
 
-def call(bus, path: str, iface: str, method: str, params: GLib.Variant | None = None, reply_type: str | None = None):
+def call(
+    bus,
+    path: str,
+    iface: str,
+    method: str,
+    params: GLib.Variant | None = None,
+    reply_type: str | None = None,
+    timeout_ms: int = TIMEOUT_MS,
+):
     return bus.call_sync(
         BUS_NAME,
         path,
@@ -94,9 +102,14 @@ def call(bus, path: str, iface: str, method: str, params: GLib.Variant | None = 
         params,
         GLib.VariantType(reply_type) if reply_type else None,
         Gio.DBusCallFlags.NONE,
-        TIMEOUT_MS,
+        timeout_ms,
         None,
     )
+
+
+def is_timeout(error: GLib.Error) -> bool:
+    text = (error.message or "").lower()
+    return "timeout" in text or "timed out" in text
 
 
 def get_prop(bus, path: str, iface: str, name: str, default=None):
@@ -509,16 +522,41 @@ def active_conversations(bus, device_id: str) -> list[dict]:
 def cmd_conversations(args: list[str]) -> None:
     bus, device_id = require_device(args[0] if args else "")
     try:
-        call(bus, device_path(device_id), CONV_IFACE, "requestAllConversationThreads", None)
+        call(bus, device_path(device_id), CONV_IFACE, "requestAllConversationThreads", None, timeout_ms=200)
     except GLib.Error:
         try:
-            call(bus, plugin_path(device_id, "sms"), SMS_IFACE, "requestAllConversations", None)
+            call(bus, plugin_path(device_id, "sms"), SMS_IFACE, "requestAllConversations", None, timeout_ms=200)
         except GLib.Error:
             pass
     emit({"ok": True, "conversations": active_conversations(bus, device_id)})
 
 
-def collect_thread(bus, device_id: str, thread_id: int, timeout_ms: int = 3500) -> list[dict]:
+def fire_conversation_request(bus, device_id: str, thread_id: int, start: int, end: int) -> None:
+    path = device_path(device_id)
+    params = GLib.Variant("(xii)", (thread_id, start, end))
+
+    def _finished(conn, result, *_args):
+        try:
+            conn.call_finish(result)
+        except GLib.Error:
+            pass
+
+    bus.call(
+        BUS_NAME,
+        path,
+        CONV_IFACE,
+        "requestConversation",
+        params,
+        None,
+        Gio.DBusCallFlags.NONE,
+        12000,
+        None,
+        _finished,
+        None,
+    )
+
+
+def collect_thread(bus, device_id: str, thread_id: int, start: int = 0, end: int = 12, wait_ms: int = 1600) -> list[dict]:
     path = device_path(device_id)
     messages: dict[int, dict] = {}
     loop = GLib.MainLoop()
@@ -527,7 +565,7 @@ def collect_thread(bus, device_id: str, thread_id: int, timeout_ms: int = 3500) 
     def quit_soon():
         if idle_id["id"]:
             GLib.source_remove(idle_id["id"])
-        idle_id["id"] = GLib.timeout_add(400, loop.quit)
+        idle_id["id"] = GLib.timeout_add(250, loop.quit)
 
     def on_signal(_conn, _sender, _path, _iface, signal, params):
         if signal in ("conversationUpdated", "conversationCreated"):
@@ -537,16 +575,14 @@ def collect_thread(bus, device_id: str, thread_id: int, timeout_ms: int = 3500) 
                 messages[int(message["id"])] = message
                 quit_soon()
         elif signal == "conversationLoaded":
-            loaded = params.unpack()[0]
+            packed = params.unpack()
+            loaded = packed[0] if packed else -1
             if int(loaded) == thread_id:
-                loop.quit()
+                quit_soon()
 
     bus.signal_subscribe(BUS_NAME, CONV_IFACE, None, path, None, Gio.DBusSignalFlags.NONE, on_signal)
-    try:
-        call(bus, path, CONV_IFACE, "requestConversation", GLib.Variant("(xii)", (thread_id, 0, 40)))
-    except GLib.Error:
-        call(bus, plugin_path(device_id, "sms"), SMS_IFACE, "requestConversation", GLib.Variant("(x)", (thread_id,)))
-    GLib.timeout_add(timeout_ms, loop.quit)
+    fire_conversation_request(bus, device_id, thread_id, start, end)
+    GLib.timeout_add(wait_ms, loop.quit)
     loop.run()
     rows = sorted(messages.values(), key=lambda item: item.get("date") or 0)
     if not rows:
@@ -559,13 +595,25 @@ def collect_thread(bus, device_id: str, thread_id: int, timeout_ms: int = 3500) 
 
 def cmd_conversation(args: list[str]) -> None:
     if len(args) < 2:
-        fail("Usage: conversation <device-id> <thread-id>")
+        fail("Usage: conversation <device-id> <thread-id> [start] [end]")
     bus, device_id = require_device(args[0])
     try:
         thread_id = int(args[1])
+        start = int(args[2]) if len(args) > 2 else 0
+        end = int(args[3]) if len(args) > 3 else start + 12
     except ValueError:
-        fail("Thread id must be a number")
-    emit({"ok": True, "threadId": thread_id, "messages": collect_thread(bus, device_id, thread_id)})
+        fail("Thread id, start, and end must be numbers")
+    if end < start:
+        end = start + 12
+    rows = collect_thread(bus, device_id, thread_id, start, end)
+    emit(
+        {
+            "ok": True,
+            "threadId": thread_id,
+            "messages": rows,
+            "more": len(rows) >= max(1, end - start),
+        }
+    )
 
 
 def cmd_sms_reply(args: list[str]) -> None:
