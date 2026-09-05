@@ -1,5 +1,9 @@
 # Changelog
 
+## 1.2.0
+
+SMS threads show image thumbnails and file chips for attachments. Inbox previews say Photo or the file name when there is no text.
+
 ## 1.1.3
 
 Up and down in the inbox and in a thread follow the highlight inside that list. The reply field stays put.

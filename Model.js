@@ -1,4 +1,4 @@
-var PLUGIN_VERSION = "1.1.3"
+var PLUGIN_VERSION = "1.2.0"
 var PROJECT_URL = "https://github.com/astorrer/omarchy-connect"
 
 function scrollFlickToItem(flick, item, margin) {
@@ -217,17 +217,38 @@ function conversationTitle(conversation) {
   return addresses.map(String).join(", ")
 }
 
+function attachmentPreviewLabel(item) {
+  if (!item) return "Attachment"
+  if (item.kind === "image" || (item.mime && String(item.mime).indexOf("image/") === 0)) return "Photo"
+  var label = String(item.label || item.name || "").trim()
+  if (label) return label
+  return "Attachment"
+}
+
+function attachmentSummary(item) {
+  var atts = item && item.attachments
+  if (atts && typeof atts.length === "number" && atts.length > 0) {
+    if (atts.length === 1) return attachmentPreviewLabel(atts[0])
+    return atts.length + " attachments"
+  }
+  if (item && item.attachmentCount > 0) return "Attachment"
+  return ""
+}
+
 function previewText(conversation) {
   var body = String((conversation && conversation.body) || "").replace(/\s+/g, " ").trim()
-  if (body === "" && conversation && conversation.attachmentCount > 0) return "Attachment"
-  return body
+  if (body) return body
+  return attachmentSummary(conversation)
 }
 
 function messageText(message) {
-  var body = String((message && message.body) || "")
-  if (body !== "") return body
-  if (message && message.attachmentCount > 0) return "Attachment"
-  return ""
+  return String((message && message.body) || "")
+}
+
+function messageAttachments(message) {
+  var atts = message && message.attachments
+  if (atts && typeof atts.length === "number") return atts
+  return []
 }
 
 function formatSmsTime(ms) {

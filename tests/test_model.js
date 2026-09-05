@@ -60,7 +60,9 @@ assert(sandbox.conversationTitle({ names: ["Ada", "Bob"] }) === "Ada, Bob", "nam
 assert(sandbox.conversationTitle({ addresses: ["+1", "+2"] }) === "+1, +2", "group title")
 assert(sandbox.previewText({ body: "  hello\nthere " }) === "hello there", "preview squashes whitespace")
 assert(sandbox.messageText({ body: "" }) === "", "empty message")
-assert(sandbox.messageText({ body: "", attachmentCount: 1 }) === "Attachment", "attachment placeholder")
+assert(sandbox.previewText({ body: "", attachments: [{ kind: "image", mime: "image/jpeg" }] }) === "Photo", "photo preview")
+assert(sandbox.previewText({ body: "", attachments: [{ kind: "file", label: "a.pdf" }, { kind: "file", label: "b" }] }) === "2 attachments", "multi attachment preview")
+assert(sandbox.previewText({ body: "", attachmentCount: 1 }) === "Attachment", "attachment placeholder")
 assert(sandbox.formatSmsTime(Date.now()).indexOf("M") !== -1, "today uses am/pm")
 
 console.log("ok")

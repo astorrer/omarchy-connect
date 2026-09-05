@@ -435,6 +435,7 @@ ColumnLayout {
             required property int index
             readonly property bool mine: !!modelData.fromMe
             readonly property real maxBubble: width * 0.82
+            readonly property var atts: Model.messageAttachments(modelData)
             width: parent.width
             hasCursor: root.cursorActive && root.page === "thread" && root.listIndex === index && !root.editorFocused
             foreground: root.foreground
@@ -452,7 +453,7 @@ ColumnLayout {
               anchors.leftMargin: Style.space(10)
               anchors.rightMargin: Style.space(10)
               anchors.verticalCenter: parent.verticalCenter
-              width: Math.min(msgRow.maxBubble, Math.max(bodyText.implicitWidth, timeText.implicitWidth) + Style.space(20))
+              width: Math.min(msgRow.maxBubble, Math.max(bodyText.visible ? bodyText.implicitWidth : 0, timeText.implicitWidth, attachCol.visible ? attachCol.implicitWidth : 0) + Style.space(20))
               implicitHeight: bubbleCol.implicitHeight + Style.space(16)
               radius: Style.cornerRadius
               color: msgRow.mine
@@ -467,9 +468,55 @@ ColumnLayout {
                 anchors.right: parent.right
                 anchors.top: parent.top
                 anchors.margins: Style.space(8)
-                spacing: Style.space(2)
+                spacing: Style.space(4)
+                Column {
+                  id: attachCol
+                  visible: msgRow.atts.length > 0
+                  width: Math.min(msgRow.maxBubble - Style.space(20), Style.space(200))
+                  spacing: Style.space(4)
+                  Repeater {
+                    model: msgRow.atts
+                    Item {
+                      required property var modelData
+                      width: attachCol.width
+                      implicitHeight: thumb.visible ? thumb.height : chip.implicitHeight
+                      Image {
+                        id: thumb
+                        visible: modelData.kind === "image" && !!modelData.thumb
+                        source: modelData.thumb || ""
+                        asynchronous: true
+                        fillMode: Image.PreserveAspectFit
+                        width: parent.width
+                        height: Math.min(Style.space(120), implicitHeight > 0 ? implicitHeight : Style.space(80))
+                      }
+                      BorderSurface {
+                        id: chip
+                        visible: !thumb.visible
+                        width: parent.width
+                        implicitHeight: chipLabel.implicitHeight + Style.space(10)
+                        radius: Style.cornerRadius
+                        color: Style.hoverFillFor(root.foreground, Color.accent)
+                        borderSpec: Border.controlSpec("normal", root.foreground, Color.accent)
+                        Text {
+                          id: chipLabel
+                          anchors.left: parent.left
+                          anchors.right: parent.right
+                          anchors.verticalCenter: parent.verticalCenter
+                          anchors.margins: Style.space(6)
+                          textFormat: Text.PlainText
+                          text: "󰈔  " + String((modelData && modelData.label) || "File")
+                          color: root.foreground
+                          font.family: root.fontFamily
+                          font.pixelSize: Style.font.caption
+                          elide: Text.ElideMiddle
+                        }
+                      }
+                    }
+                  }
+                }
                 Text {
                   id: bodyText
+                  visible: Model.messageText(msgRow.modelData) !== ""
                   width: Math.min(msgRow.maxBubble - Style.space(20), implicitWidth)
                   textFormat: Text.PlainText
                   text: Model.messageText(msgRow.modelData)
