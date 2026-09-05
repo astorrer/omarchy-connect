@@ -153,6 +153,29 @@ def conversation_title(message: dict, contacts: list[dict] | None = None) -> str
     return ", ".join(display_address(address, contacts) for address in addresses)
 
 
+def serialize_contacts(contacts: list[dict] | None) -> list[dict]:
+    rows = []
+    for contact in contacts or []:
+        phones = [str(phone).strip() for phone in (contact.get("phones") or []) if str(phone).strip()]
+        if not phones:
+            continue
+        rows.append({
+            "name": str(contact.get("name") or "").strip(),
+            "phones": phones,
+            "phone": phones[0],
+        })
+    rows.sort(key=lambda row: (str(row.get("name") or "").lower(), row["phone"]))
+    return rows
+
+
+def cmd_contacts(args: list[str]) -> None:
+    from .util import emit, fail
+
+    if not args:
+        fail("Usage: contacts <device-id>")
+    emit({"ok": True, "contacts": serialize_contacts(load_contacts(args[0]))})
+
+
 def annotate_message(message: dict, contacts: list[dict] | None = None) -> dict:
     addresses = message.get("addresses") or []
     names = [display_address(address, contacts) for address in addresses]

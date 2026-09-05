@@ -1,5 +1,9 @@
 # Changelog
 
+## 1.2.17
+
+New message searches synced contacts by name. A number still works if you need it.
+
 ## 1.2.16
 
 New message and SMS app stay at the bottom of the inbox, like the reply field in a thread.

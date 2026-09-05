@@ -1,4 +1,4 @@
-var PLUGIN_VERSION = "1.2.16"
+var PLUGIN_VERSION = "1.2.17"
 var PROJECT_URL = "https://github.com/astorrer/omarchy-connect"
 
 function scrollFlickToItem(flick, item, margin) {
@@ -212,6 +212,48 @@ function heroPhrases(device, hideSms) {
   if (net) phrases.push("On " + net + ", still in range")
   phrases.push("Ready to ping " + short)
   return phrases
+}
+
+function looksLikePhone(text) {
+  var digits = String(text || "").replace(/[\s\-()+]/g, "")
+  return digits.length >= 7 && /^\d+$/.test(digits)
+}
+
+function contactLabel(contact) {
+  if (!contact) return ""
+  var name = String(contact.name || "").trim()
+  if (name) return name
+  return String(contact.phone || "")
+}
+
+function filterContacts(contacts, query) {
+  var list = contacts || []
+  var q = String(query || "").replace(/\s+/g, " ").trim().toLowerCase()
+  var rows = []
+  var i
+  var j
+  for (i = 0; i < list.length; i++) {
+    var contact = list[i]
+    if (!contact) continue
+    if (!q) {
+      rows.push(contact)
+      continue
+    }
+    var name = String(contact.name || "").toLowerCase()
+    var hit = name.indexOf(q) !== -1
+    var phones = contact.phones
+    if (!hit && String(contact.phone || "").toLowerCase().indexOf(q) !== -1) hit = true
+    if (!hit && phones && typeof phones.length === "number") {
+      for (j = 0; j < phones.length; j++) {
+        if (String(phones[j] || "").toLowerCase().indexOf(q) !== -1) {
+          hit = true
+          break
+        }
+      }
+    }
+    if (hit) rows.push(contact)
+  }
+  return rows
 }
 
 function conversationTitle(conversation) {

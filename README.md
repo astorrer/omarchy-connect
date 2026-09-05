@@ -19,6 +19,7 @@ For names in SMS: KDE Connect → this computer → **Contacts**. Grant permissi
 - Left click opens the panel. Right click refreshes. Middle click pings the phone.
 - Click the phone in the panel to open the KDE Connect app.
 - Picture messages show a thumbnail; other attachments show as a chip.
+- New message looks up names from synced contacts. You can still type a number.
 - 2FA codes and http(s) links get a copy chip. They are copied, never opened.
 - Notifications, messages, ping, ring, clipboard, and file share are in the panel.
 - Desktop popups from KDE Connect still appear. The panel keeps the ones that are still on the phone.

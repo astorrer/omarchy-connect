@@ -18,6 +18,8 @@ ColumnLayout {
   property int listIndex: 0
   property string draft: ""
   property string composeTo: ""
+  property string composeNumber: ""
+  property string composeName: ""
   property bool pinToNewest: true
   property real _savedY: 0
   property real _savedH: 0
@@ -33,6 +35,7 @@ ColumnLayout {
   readonly property int listCount: page === "inbox" ? conversations.length + 2 : messages.length
   readonly property int inboxToolStart: conversations.length
   readonly property bool inboxToolsFocused: page === "inbox" && listIndex >= inboxToolStart
+  readonly property var contactMatches: Model.filterContacts(service ? service.contacts : [], composeTo)
 
   signal backRequested()
   signal releaseEditor()
@@ -76,10 +79,23 @@ ColumnLayout {
     page = "compose"
     thread = null
     composeTo = ""
+    composeNumber = ""
+    composeName = ""
     draft = ""
     cursorActive = true
     listIndex = 0
+    if (deviceId !== "") service.loadContacts(deviceId)
     Qt.callLater(function() { if (toField) toField.forceActiveFocus() })
+  }
+
+  function pickContact(contact) {
+    if (!contact) return
+    composeName = Model.contactLabel(contact)
+    composeNumber = String(contact.phone || "")
+    composeTo = composeName || composeNumber
+    if (toField) toField.text = composeTo
+    listIndex = 0
+    Qt.callLater(function() { if (draftField) draftField.forceActiveFocus() })
   }
 
   function scrollToNewest() {
@@ -138,15 +154,34 @@ ColumnLayout {
       if (listIndex < messages.length && msgRepeater) return msgRepeater.itemAt(listIndex)
       return draftField
     }
-    if (page === "compose") return toField.activeFocus ? toField : draftField
+    if (page === "compose") {
+      if (!toField.activeFocus && !draftField.activeFocus && contactRepeater)
+        return contactRepeater.itemAt(listIndex)
+      return toField.activeFocus ? toField : draftField
+    }
     return backButton
   }
 
   function moveList(dx, dy) {
     cursorActive = true
     if (page === "compose") {
+      if (toField.activeFocus) {
+        if (dy > 0 && contactMatches.length > 0) {
+          listIndex = Math.min(contactMatches.length - 1, listIndex + 1)
+          return
+        }
+        if (dy > 0) draftField.forceActiveFocus()
+        return
+      }
+      if (dy < 0) {
+        if (contactMatches.length > 0 && listIndex > 0) {
+          listIndex = listIndex - 1
+          return
+        }
+        toField.forceActiveFocus()
+        return
+      }
       if (dy > 0) draftField.forceActiveFocus()
-      else if (dy < 0) toField.forceActiveFocus()
       return
     }
     if (page === "thread") {
@@ -185,7 +220,11 @@ ColumnLayout {
 
   function activateList() {
     if (page === "compose") {
-      if (toField.activeFocus) {
+      if (toField.activeFocus || (contactMatches.length > 0 && listIndex < contactMatches.length && !draftField.activeFocus)) {
+        if (contactMatches.length > 0 && !Model.looksLikePhone(composeTo)) {
+          pickContact(contactMatches[Math.max(0, Math.min(listIndex, contactMatches.length - 1))])
+          return
+        }
         draftField.forceActiveFocus()
         return
       }
@@ -223,7 +262,7 @@ ColumnLayout {
       scrollToNewest()
       return
     }
-    var number = String(composeTo || "").trim()
+    var number = String(composeNumber || composeTo || "").trim()
     if (number === "") return
     service.smsSend(deviceId, number, text)
     draft = ""
@@ -267,7 +306,7 @@ ColumnLayout {
     Text {
       Layout.fillWidth: true
       horizontalAlignment: Text.AlignRight
-      text: root.page === "compose" ? "New message" : (root.page === "thread" ? Model.conversationTitle(root.thread) : "Messages")
+      text: root.page === "compose" ? (root.composeName || "New message") : (root.page === "thread" ? Model.conversationTitle(root.thread) : "Messages")
       color: root.foreground
       font.family: root.fontFamily
       font.pixelSize: Style.font.body
@@ -281,7 +320,7 @@ ColumnLayout {
   }
 
   Text {
-    visible: root.loading && root.page !== "thread"
+    visible: root.loading && root.page === "inbox"
     Layout.fillWidth: true
     text: "Loading…"
     color: root.dim
@@ -391,6 +430,76 @@ ColumnLayout {
                   textFormat: Text.PlainText
                   text: Model.previewText(convRow.modelData)
                   color: convRow.modelData.read === 0 ? root.foreground : root.dim
+                  font.family: root.fontFamily
+                  font.pixelSize: Style.font.caption
+                  elide: Text.ElideRight
+                  Layout.fillWidth: true
+                }
+              }
+            }
+          }
+        }
+      }
+
+      Column {
+        visible: root.page === "compose"
+        width: parent.width
+        spacing: Style.space(6)
+
+        Text {
+          visible: !root.loading && root.contactMatches.length === 0
+          width: parent.width
+          text: String(root.composeTo || "").trim() === ""
+            ? "No contacts yet. Grant Contacts in KDE Connect, or type a number."
+            : "No matching contacts. Type a number to send anyway."
+          color: root.dim
+          font.family: root.fontFamily
+          font.pixelSize: Style.font.caption
+          wrapMode: Text.WordWrap
+        }
+
+        Repeater {
+          id: contactRepeater
+          model: root.contactMatches
+          CursorSurface {
+            id: contactRow
+            required property var modelData
+            required property int index
+            width: parent.width
+            hasCursor: root.cursorActive && root.page === "compose" && root.listIndex === index
+            foreground: root.foreground
+            implicitHeight: contactInner.implicitHeight + Style.spacing.rowPaddingX
+            MouseArea {
+              anchors.fill: parent
+              hoverEnabled: true
+              cursorShape: Qt.PointingHandCursor
+              onEntered: { root.cursorActive = true; root.listIndex = contactRow.index }
+              onClicked: root.pickContact(contactRow.modelData)
+            }
+            RowLayout {
+              id: contactInner
+              anchors.left: parent.left
+              anchors.right: parent.right
+              anchors.verticalCenter: parent.verticalCenter
+              anchors.leftMargin: Style.space(10)
+              anchors.rightMargin: Style.space(10)
+              spacing: Style.space(8)
+              ColumnLayout {
+                Layout.fillWidth: true
+                spacing: Style.space(1)
+                Text {
+                  textFormat: Text.PlainText
+                  text: Model.contactLabel(contactRow.modelData)
+                  color: root.foreground
+                  font.family: root.fontFamily
+                  font.pixelSize: Style.font.body
+                  elide: Text.ElideRight
+                  Layout.fillWidth: true
+                }
+                Text {
+                  textFormat: Text.PlainText
+                  text: String((contactRow.modelData && contactRow.modelData.phone) || "")
+                  color: root.dim
                   font.family: root.fontFamily
                   font.pixelSize: Style.font.caption
                   elide: Text.ElideRight
@@ -620,17 +729,36 @@ ColumnLayout {
       visible: root.page === "compose"
       width: parent.width
       foreground: root.foreground
-      placeholderText: "Phone number"
+      placeholderText: "Name or number"
       text: root.composeTo
-      onTextChanged: if (text !== root.composeTo) root.composeTo = text
-      onAccepted: draftField.forceActiveFocus()
+      onTextChanged: {
+        if (text === root.composeTo) return
+        root.composeTo = text
+        if (root.composeName && text !== root.composeName) {
+          root.composeName = ""
+          root.composeNumber = ""
+        }
+        root.listIndex = 0
+      }
+      onAccepted: {
+        if (root.contactMatches.length > 0 && !Model.looksLikePhone(root.composeTo))
+          root.pickContact(root.contactMatches[Math.max(0, root.listIndex)])
+        else
+          draftField.forceActiveFocus()
+      }
       Keys.onPressed: function(event) {
         if (event.key === Qt.Key_Escape) {
           event.accepted = true
           root.openInbox()
         } else if (event.key === Qt.Key_Down) {
           event.accepted = true
-          draftField.forceActiveFocus()
+          if (root.contactMatches.length > 0)
+            root.listIndex = Math.min(root.contactMatches.length - 1, root.listIndex + 1)
+          else
+            draftField.forceActiveFocus()
+        } else if (event.key === Qt.Key_Up) {
+          event.accepted = true
+          root.listIndex = Math.max(0, root.listIndex - 1)
         }
       }
     }

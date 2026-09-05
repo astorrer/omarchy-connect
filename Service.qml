@@ -16,6 +16,7 @@ Item {
   property var conversations: []
   property var messages: []
   property var notifications: []
+  property var contacts: []
   property var _smsQueue: []
   property var _actionQueue: []
   property bool smsLoading: false
@@ -150,6 +151,11 @@ Item {
   function loadConversations(id) {
     if (!id) return
     runSms("conversations", ["conversations", id])
+  }
+
+  function loadContacts(id) {
+    if (!id) return
+    runSms("contacts", ["contacts", id])
   }
 
   function mergeMessages(incoming) {
@@ -390,6 +396,7 @@ Item {
       } else {
         root.lastError = ""
         if (smsProcess._kind === "conversations") root.conversations = parsed.conversations || []
+        else if (smsProcess._kind === "contacts") root.contacts = parsed.contacts || []
         else if (smsProcess._kind === "notifications") root.notifications = parsed.notifications || []
         else if (smsProcess._kind === "thread") root.messages = parsed.messages || []
         else if (smsProcess._kind === "refresh") root.mergeMessages(parsed.messages || [])

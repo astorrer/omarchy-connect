@@ -73,6 +73,10 @@ END:VCARD
             unknown = contacts.conversation_title({"addresses": ["+15555550100"]}, loaded)
             self.assertEqual(unknown, "+15555550100")
             self.assertEqual(contacts.conversation_title({"addresses": []}), "Unknown")
+            packed = contacts.serialize_contacts(loaded)
+            self.assertEqual(packed[0]["name"], "Caroline Storrer")
+            self.assertEqual(packed[0]["phone"], "+1-252-619-8608")
+            self.assertEqual(contacts.serialize_contacts([{"name": "No phone", "phones": []}]), [])
 
 
 if __name__ == "__main__":
