@@ -35,9 +35,9 @@ The version in the footer opens the project page.
 Open from the gear in the panel:
 
 - Refresh interval
-- Hide if away
-- Bar badge
-- Hide SMS (on by default)
+- Hide when away
+- Badge the bar
+- Hide SMS notices (on by default)
 
 ## Remove
 

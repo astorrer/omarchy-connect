@@ -821,7 +821,8 @@ Panel {
             Toggle {
               id: badgeRow
               width: parent.width
-              label: "Bar badge"
+              label: "Badge the bar"
+              titleSize: Style.font.body
               checked: root.badgeNotifications
               foreground: root.foreground
               fontFamily: root.fontFamily
@@ -838,7 +839,8 @@ Panel {
             Toggle {
               id: hideRow
               width: parent.width
-              label: "Hide if away"
+              label: "Hide when away"
+              titleSize: Style.font.body
               checked: root.hideWhenDisconnected
               foreground: root.foreground
               fontFamily: root.fontFamily
@@ -855,7 +857,8 @@ Panel {
             Toggle {
               id: hideSmsRow
               width: parent.width
-              label: "Hide SMS"
+              label: "Hide SMS notices"
+              titleSize: Style.font.body
               checked: root.hideSmsNotifications
               foreground: root.foreground
               fontFamily: root.fontFamily

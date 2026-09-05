@@ -1,5 +1,9 @@
 # Changelog
 
+## 1.2.13
+
+Settings labels say a little more without filling the row.
+
 ## 1.2.12
 
 Shorter settings labels so they fit next to the toggle.
