@@ -321,7 +321,7 @@ Column {
     }
 
     Repeater {
-      model: root.messages
+      model: root.service ? root.service.messages : []
       CursorSurface {
         id: msgRow
         required property var modelData
@@ -329,42 +329,39 @@ Column {
         width: parent.width
         hasCursor: root.cursorActive && root.page === "thread" && root.listIndex === index && !root.editorFocused
         foreground: root.foreground
-        implicitHeight: msgInner.implicitHeight + Style.space(6)
+        implicitHeight: msgInner.implicitHeight + Style.space(8)
         MouseArea {
           anchors.fill: parent
           hoverEnabled: true
           onEntered: { root.cursorActive = true; root.listIndex = msgRow.index }
-          onClicked: { root.listIndex = root.messages.length; draftField.forceActiveFocus() }
+          onClicked: { root.listIndex = (root.service.messages || []).length; draftField.forceActiveFocus() }
         }
-        RowLayout {
+        Column {
           id: msgInner
-          anchors.left: parent.left
-          anchors.right: parent.right
-          width: parent.width
-          layoutDirection: msgRow.modelData.fromMe ? Qt.RightToLeft : Qt.LeftToRight
-          Item { Layout.fillWidth: true }
-          Column {
-            Layout.maximumWidth: parent.width * 0.82
-            spacing: Style.space(2)
-            Text {
-              width: parent.width
-              textFormat: Text.PlainText
-              text: Model.messageText(msgRow.modelData)
-              color: root.foreground
-              font.family: root.fontFamily
-              font.pixelSize: Style.font.body
-              wrapMode: Text.Wrap
-              visible: text !== ""
-              horizontalAlignment: msgRow.modelData.fromMe ? Text.AlignRight : Text.AlignLeft
-            }
-            Text {
-              width: parent.width
-              text: Model.formatSmsTime(msgRow.modelData.date)
-              color: root.dim
-              font.family: root.fontFamily
-              font.pixelSize: Style.font.caption
-              horizontalAlignment: msgRow.modelData.fromMe ? Text.AlignRight : Text.AlignLeft
-            }
+          anchors.left: msgRow.modelData.fromMe ? undefined : parent.left
+          anchors.right: msgRow.modelData.fromMe ? parent.right : undefined
+          anchors.leftMargin: Style.space(10)
+          anchors.rightMargin: Style.space(10)
+          width: parent.width * 0.82
+          spacing: Style.space(2)
+          Text {
+            width: parent.width
+            textFormat: Text.PlainText
+            text: Model.messageText(msgRow.modelData)
+            color: root.foreground
+            font.family: root.fontFamily
+            font.pixelSize: Style.font.body
+            wrapMode: Text.Wrap
+            horizontalAlignment: msgRow.modelData.fromMe ? Text.AlignRight : Text.AlignLeft
+          }
+          Text {
+            width: parent.width
+            textFormat: Text.PlainText
+            text: Model.formatSmsTime(msgRow.modelData.date)
+            color: root.dim
+            font.family: root.fontFamily
+            font.pixelSize: Style.font.caption
+            horizontalAlignment: msgRow.modelData.fromMe ? Text.AlignRight : Text.AlignLeft
           }
         }
       }
