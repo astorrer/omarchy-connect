@@ -1,5 +1,9 @@
 # Changelog
 
+## 1.2.4
+
+Copy a 2FA code or an http(s) link from a message or notification. Click the chip, or press `y`. Links are copied, not opened. The rest of the message stays put.
+
 ## 1.2.3
 
 Going back to the inbox or the notification list jumps to the top, where the recent items are.

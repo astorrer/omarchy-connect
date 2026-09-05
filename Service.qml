@@ -114,6 +114,14 @@ Item {
   function reject(id) { runAction(["reject", id], "Declining…") }
   function sendClipboard(id) { runAction(["send-clipboard", id], "Sending clipboard…") }
 
+  function copyToClipboard(text, hint) {
+    var value = String(text || "")
+    if (value === "") return
+    Quickshell.execDetached(["bash", "-c", "printf %s " + Util.shellQuote(value) + " | wl-copy"])
+    actionStatus = hint || "Copied"
+    actionStatusTimer.restart()
+  }
+
   function runSms(kind, args, seedMessages) {
     lastError = ""
     if (kind === "thread" && seedMessages) messages = seedMessages

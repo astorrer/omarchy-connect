@@ -18,6 +18,7 @@ For names in SMS: KDE Connect → this computer → **Contacts**. Grant permissi
 
 - Left click opens the panel. Right click refreshes. Middle click pings the phone.
 - Picture messages show a thumbnail; other attachments show as a chip.
+- 2FA codes and http(s) links get a copy chip. They are copied, never opened.
 - Notifications, messages, ping, ring, clipboard, and file share are in the panel.
 - Desktop popups from KDE Connect still appear. The panel keeps the ones that are still on the phone.
 
@@ -25,7 +26,7 @@ Keys inside the panel:
 
 - Arrows or `h` `j` `k` `l` move the highlight, including left/right on the button pad.
 - Enter activates. Esc goes back.
-- `n` notifications · `m` messages · `d` dismiss · `p` ping · `f` ring · `c` clipboard · `s` send file · `r` refresh · `,` settings
+- `n` notifications · `m` messages · `d` dismiss · `y` copy code or link · `p` ping · `f` ring · `c` clipboard · `s` send file · `r` refresh · `,` settings
 
 The version in the footer opens the project page.
 

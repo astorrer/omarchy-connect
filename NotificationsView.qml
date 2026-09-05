@@ -17,6 +17,7 @@ ColumnLayout {
   property bool cursorActive: false
   property int listIndex: 0
   property string draft: ""
+  property string copiedHint: ""
 
   readonly property var notifications: service ? (service.notifications || []) : []
   readonly property bool loading: service ? service.smsLoading === true : false
@@ -92,6 +93,19 @@ ColumnLayout {
         notifyFlick.contentY = 0
       })
     })
+  }
+
+  function copySnippet(item) {
+    if (!item || !item.value || !service) return
+    var hint = item.kind === "code" ? "Copied " + item.value : "Copied link"
+    service.copyToClipboard(item.value, hint)
+    copiedHint = hint
+    copyHintTimer.restart()
+  }
+
+  function copyPrimary() {
+    var item = page === "reply" ? current : notificationAtCursor()
+    copySnippet(Model.primaryCopySnippet(Model.notificationCopySnippets(item)))
   }
 
   function activateList() {
@@ -174,6 +188,22 @@ ColumnLayout {
     font.pixelSize: Style.font.caption
   }
 
+  Text {
+    visible: root.copiedHint !== ""
+    Layout.fillWidth: true
+    text: root.copiedHint
+    color: root.dim
+    font.family: root.fontFamily
+    font.pixelSize: Style.font.caption
+  }
+
+  Timer {
+    id: copyHintTimer
+    interval: 1800
+    repeat: false
+    onTriggered: root.copiedHint = ""
+  }
+
   Flickable {
     id: notifyFlick
     Layout.fillWidth: true
@@ -212,6 +242,7 @@ ColumnLayout {
         width: parent.width
         hasCursor: root.cursorActive && root.page === "list" && root.listIndex === index
         foreground: root.foreground
+        readonly property var snips: Model.notificationCopySnippets(modelData)
         implicitHeight: notifInner.implicitHeight + Style.spacing.rowPaddingX
         MouseArea {
           anchors.fill: parent
@@ -274,6 +305,38 @@ ColumnLayout {
               wrapMode: Text.WordWrap
               Layout.fillWidth: true
             }
+            Repeater {
+              model: notifRow.snips
+              BorderSurface {
+                required property var modelData
+                Layout.fillWidth: true
+                implicitHeight: notifSnipLabel.implicitHeight + Style.space(10)
+                radius: Style.cornerRadius
+                color: Style.hoverFillFor(root.foreground, Color.accent)
+                borderSpec: Border.controlSpec("normal", root.foreground, Color.accent)
+                MouseArea {
+                  anchors.fill: parent
+                  z: 2
+                  hoverEnabled: true
+                  preventStealing: true
+                  cursorShape: Qt.PointingHandCursor
+                  onClicked: root.copySnippet(modelData)
+                }
+                Text {
+                  id: notifSnipLabel
+                  anchors.left: parent.left
+                  anchors.right: parent.right
+                  anchors.verticalCenter: parent.verticalCenter
+                  anchors.margins: Style.space(6)
+                  textFormat: Text.PlainText
+                  text: "󰆏  " + String((modelData && modelData.label) || "Copy")
+                  color: root.foreground
+                  font.family: root.fontFamily
+                  font.pixelSize: Style.font.caption
+                  elide: Text.ElideMiddle
+                }
+              }
+            }
           }
         }
       }
@@ -319,6 +382,37 @@ ColumnLayout {
       font.family: root.fontFamily
       font.pixelSize: Style.font.body
       wrapMode: Text.WordWrap
+    }
+
+    Repeater {
+      model: Model.notificationCopySnippets(root.current)
+      BorderSurface {
+        required property var modelData
+        width: parent.width
+        implicitHeight: replySnipLabel.implicitHeight + Style.space(10)
+        radius: Style.cornerRadius
+        color: Style.hoverFillFor(root.foreground, Color.accent)
+        borderSpec: Border.controlSpec("normal", root.foreground, Color.accent)
+        MouseArea {
+          anchors.fill: parent
+          hoverEnabled: true
+          cursorShape: Qt.PointingHandCursor
+          onClicked: root.copySnippet(modelData)
+        }
+        Text {
+          id: replySnipLabel
+          anchors.left: parent.left
+          anchors.right: parent.right
+          anchors.verticalCenter: parent.verticalCenter
+          anchors.margins: Style.space(6)
+          textFormat: Text.PlainText
+          text: "󰆏  " + String((modelData && modelData.label) || "Copy")
+          color: root.foreground
+          font.family: root.fontFamily
+          font.pixelSize: Style.font.caption
+          elide: Text.ElideMiddle
+        }
+      }
     }
 
     RowLayout {

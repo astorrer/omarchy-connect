@@ -425,6 +425,10 @@ Panel {
         }
         else if (t === "p" || t === "P") { if (root.selectedDevice) connect.ping(root.selectedDevice.id) }
         else if (t === "f" || t === "F") { if (root.selectedDevice) connect.ring(root.selectedDevice.id) }
+        else if (t === "y" || t === "Y") {
+          if (root.view === "sms") smsView.copyPrimary()
+          else if (root.view === "notifications") notifyView.copyPrimary()
+        }
         else if (t === "c" || t === "C") { if (root.selectedDevice) connect.sendClipboard(root.selectedDevice.id) }
         else if (t === "s" || t === "S") { if (root.selectedDevice) connect.shareFile(root.selectedDevice.id) }
         else if (t === "i" || t === "I") connect.setup()

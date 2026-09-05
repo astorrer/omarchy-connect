@@ -1,4 +1,4 @@
-var PLUGIN_VERSION = "1.2.3"
+var PLUGIN_VERSION = "1.2.4"
 var PROJECT_URL = "https://github.com/astorrer/omarchy-connect"
 
 function scrollFlickToItem(flick, item, margin) {
@@ -249,6 +249,212 @@ function messageAttachments(message) {
   var atts = message && message.attachments
   if (atts && typeof atts.length === "number") return atts
   return []
+}
+
+var COPY_CUE_RE = /\b(codes?|otp|pin|passcodes?|passwords?|verif(?:y|ication)|authenticators?|2fa|two[\s-]?factor|one[\s-]?time|security[ -]?codes?|login[ -]?codes?|confirmation|auth(?:entication)?[ -]?codes?)\b/i
+
+function trimCopyUrl(url) {
+  var value = String(url || "")
+  while (/[.,;:!?']$/.test(value)) value = value.slice(0, -1)
+  if (/\)$/.test(value) && value.indexOf("(") === -1) value = value.slice(0, -1)
+  return value
+}
+
+function copyLinkLabel(url) {
+  var match = String(url || "").match(/^https?:\/\/([^/:]+)/i)
+  var host = match ? match[1] : ""
+  if (host.indexOf("www.") === 0) host = host.slice(4)
+  if (host) return "Copy " + host
+  return "Copy link"
+}
+
+function maskCopyUrls(text) {
+  return String(text || "").replace(/https?:\/\/[^\s<>"']+/gi, function(url) {
+    var blank = ""
+    for (var i = 0; i < url.length; i++) blank += " "
+    return blank
+  })
+}
+
+function copyCueRanges(text) {
+  var ranges = []
+  var re = new RegExp(COPY_CUE_RE.source, "gi")
+  var match
+  while ((match = re.exec(text))) {
+    ranges.push({ start: match.index, end: match.index + match[0].length })
+  }
+  return ranges
+}
+
+function copyCueDistance(ranges, start, end) {
+  var best = Infinity
+  for (var i = 0; i < ranges.length; i++) {
+    var cue = ranges[i]
+    if (end < cue.start) best = Math.min(best, cue.start - end)
+    else if (start > cue.end) best = Math.min(best, start - cue.end)
+    else best = 0
+  }
+  return best
+}
+
+function copyLooksLikeYear(value) {
+  return /^(19|20)\d{2}$/.test(value)
+}
+
+function copyLooksLikeDate(value) {
+  return value.length === 8 && /^(19|20)\d{6}$/.test(value)
+}
+
+function copyPhoneContext(text, start, length) {
+  var i = start
+  var j = start + length
+  while (i > 0 && /\d/.test(text.charAt(i - 1))) i--
+  while (j < text.length && /\d/.test(text.charAt(j))) j++
+  if (j - i >= 9) return true
+  if (i > 0 && text.charAt(i - 1) === "+") return true
+  return false
+}
+
+function copyNormalizeDigits(value) {
+  return String(value || "").replace(/[\s-]/g, "")
+}
+
+function copyLinks(text) {
+  var rows = []
+  var seen = {}
+  var re = /https?:\/\/[^\s<>"']+/gi
+  var match
+  while ((match = re.exec(text))) {
+    var url = trimCopyUrl(match[0])
+    if (!url || seen[url]) continue
+    if (!/^https?:\/\/\S/i.test(url)) continue
+    seen[url] = true
+    rows.push({ kind: "link", value: url, label: copyLinkLabel(url) })
+    if (rows.length >= 2) break
+  }
+  return rows
+}
+
+function copyCodes(text) {
+  var raw = String(text || "")
+  var trimmed = raw.replace(/^\s+|\s+$/g, "")
+  var seen = {}
+  var found = []
+
+  function consider(value, start, length, force, scoreBias) {
+    var digits = copyNormalizeDigits(value)
+    if (!digits || seen[digits]) return
+    if (copyPhoneContext(raw, start, length)) return
+    if (copyLooksLikeYear(digits) || copyLooksLikeDate(digits)) return
+    var cues = copyCueRanges(raw)
+    var distance = copyCueDistance(cues, start, start + length)
+    if (!force && !(distance <= 56)) return
+    seen[digits] = true
+    found.push({
+      kind: "code",
+      value: digits,
+      label: "Copy " + digits,
+      distance: force ? -1 : distance,
+      bias: scoreBias || 0
+    })
+  }
+
+  var whole = trimmed.match(/^(?:G-)?(\d{3}[\s-]\d{3}|\d{6}|\d{8})$/i)
+  if (whole) {
+    consider(whole[1], raw.indexOf(whole[1]), whole[1].length, true, 0)
+    return found
+  }
+
+  var match
+  var re = /G-(\d{6})/gi
+  while ((match = re.exec(raw))) {
+    consider(match[1], match.index, match[0].length, true, 0)
+  }
+
+  re = /(^|[^\d])(\d{3}[\s-]\d{3})(?!\d)/g
+  while ((match = re.exec(raw))) {
+    consider(match[2], match.index + match[1].length, match[2].length, false, 0)
+  }
+
+  re = /(^|[^\d])(\d{6,8})(?!\d)/g
+  while ((match = re.exec(raw))) {
+    consider(match[2], match.index + match[1].length, match[2].length, false, match[2].length === 6 ? 0 : 1)
+  }
+
+  re = /(^|[^\d])(\d{4})(?!\d)/g
+  while ((match = re.exec(raw))) {
+    consider(match[2], match.index + match[1].length, match[2].length, false, 2)
+  }
+
+  re = /\b([A-Z0-9]{6,8})\b/gi
+  while ((match = re.exec(raw))) {
+    var token = match[1]
+    if (!/[A-Z]/i.test(token) || !/\d/.test(token)) continue
+    if (/^\d+$/.test(token)) continue
+    if (seen[token.toUpperCase()] || seen[token]) continue
+    var cues = copyCueRanges(raw)
+    var distance = copyCueDistance(cues, match.index, match.index + token.length)
+    if (!(distance <= 56)) continue
+    seen[token] = true
+    seen[token.toUpperCase()] = true
+    found.push({
+      kind: "code",
+      value: token,
+      label: "Copy " + token,
+      distance: distance,
+      bias: 0
+    })
+  }
+
+  found.sort(function(a, b) {
+    if (a.distance !== b.distance) return a.distance - b.distance
+    return a.bias - b.bias
+  })
+  if (found.length <= 1) return found
+  return [found[0]]
+}
+
+function copySnippets(text) {
+  var raw = String(text || "")
+  if (raw.replace(/\s+/g, "") === "") return []
+  var codes = copyCodes(maskCopyUrls(raw))
+  var links = copyLinks(raw)
+  var rows = []
+  var i
+  for (i = 0; i < codes.length; i++) {
+    rows.push({ kind: codes[i].kind, value: codes[i].value, label: codes[i].label })
+  }
+  for (i = 0; i < links.length && rows.length < 3; i++) rows.push(links[i])
+  return rows
+}
+
+function primaryCopySnippet(snippets) {
+  var rows = snippets || []
+  var i
+  for (i = 0; i < rows.length; i++) {
+    if (rows[i] && rows[i].kind === "code") return rows[i]
+  }
+  return rows.length ? rows[0] : null
+}
+
+function messageCopySnippets(message) {
+  return copySnippets(messageText(message))
+}
+
+function notificationCopyText(item) {
+  if (!item) return ""
+  var parts = []
+  var title = String(item.title || "").trim()
+  var text = String(item.text || "").trim()
+  var ticker = String(item.ticker || "").trim()
+  if (title) parts.push(title)
+  if (text && text !== title) parts.push(text)
+  if (ticker && ticker !== title && ticker !== text) parts.push(ticker)
+  return parts.join("\n")
+}
+
+function notificationCopySnippets(item) {
+  return copySnippets(notificationCopyText(item))
 }
 
 function formatSmsTime(ms) {

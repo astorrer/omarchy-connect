@@ -22,6 +22,7 @@ ColumnLayout {
   property real _savedY: 0
   property real _savedH: 0
   property bool _keepScroll: false
+  property string copiedHint: ""
 
   readonly property var conversations: service ? (service.conversations || []) : []
   readonly property var messages: service ? (service.messages || []) : []
@@ -95,6 +96,20 @@ ColumnLayout {
         threadFlick.contentY = 0
       })
     })
+  }
+
+  function copySnippet(item) {
+    if (!item || !item.value || !service) return
+    var hint = item.kind === "code" ? "Copied " + item.value : "Copied link"
+    service.copyToClipboard(item.value, hint)
+    copiedHint = hint
+    copyHintTimer.restart()
+  }
+
+  function copyPrimary() {
+    if (page !== "thread") return
+    if (listIndex < 0 || listIndex >= messages.length) return
+    copySnippet(Model.primaryCopySnippet(Model.messageCopySnippets(messages[listIndex])))
   }
 
   function scrollCursorIntoView() {
@@ -261,6 +276,22 @@ ColumnLayout {
     color: root.dim
     font.family: root.fontFamily
     font.pixelSize: Style.font.caption
+  }
+
+  Text {
+    visible: root.copiedHint !== ""
+    Layout.fillWidth: true
+    text: root.copiedHint
+    color: root.dim
+    font.family: root.fontFamily
+    font.pixelSize: Style.font.caption
+  }
+
+  Timer {
+    id: copyHintTimer
+    interval: 1800
+    repeat: false
+    onTriggered: root.copiedHint = ""
   }
 
   Flickable {
@@ -448,6 +479,7 @@ ColumnLayout {
             readonly property bool mine: !!modelData.fromMe
             readonly property real maxBubble: width * 0.82
             readonly property var atts: Model.messageAttachments(modelData)
+            readonly property var snips: Model.messageCopySnippets(modelData)
             width: parent.width
             hasCursor: root.cursorActive && root.page === "thread" && root.listIndex === index && !root.editorFocused
             foreground: root.foreground
@@ -465,7 +497,7 @@ ColumnLayout {
               anchors.leftMargin: Style.space(10)
               anchors.rightMargin: Style.space(10)
               anchors.verticalCenter: parent.verticalCenter
-              width: Math.min(msgRow.maxBubble, Math.max(bodyText.visible ? bodyText.implicitWidth : 0, timeText.implicitWidth, attachCol.visible ? attachCol.implicitWidth : 0) + Style.space(20))
+              width: Math.min(msgRow.maxBubble, Math.max(bodyText.visible ? bodyText.implicitWidth : 0, timeText.implicitWidth, attachCol.visible ? attachCol.implicitWidth : 0, snipCol.visible ? snipCol.implicitWidth : 0) + Style.space(20))
               implicitHeight: bubbleCol.implicitHeight + Style.space(16)
               radius: Style.cornerRadius
               color: msgRow.mine
@@ -537,6 +569,44 @@ ColumnLayout {
                   font.pixelSize: Style.font.body
                   wrapMode: Text.Wrap
                   horizontalAlignment: msgRow.mine ? Text.AlignRight : Text.AlignLeft
+                }
+                Column {
+                  id: snipCol
+                  visible: msgRow.snips.length > 0
+                  width: Math.min(msgRow.maxBubble - Style.space(20), Style.space(200))
+                  spacing: Style.space(4)
+                  Repeater {
+                    model: msgRow.snips
+                    BorderSurface {
+                      required property var modelData
+                      width: snipCol.width
+                      implicitHeight: snipLabel.implicitHeight + Style.space(10)
+                      radius: Style.cornerRadius
+                      color: Style.hoverFillFor(root.foreground, Color.accent)
+                      borderSpec: Border.controlSpec("normal", root.foreground, Color.accent)
+                      MouseArea {
+                        anchors.fill: parent
+                        z: 2
+                        hoverEnabled: true
+                        preventStealing: true
+                        cursorShape: Qt.PointingHandCursor
+                        onClicked: root.copySnippet(modelData)
+                      }
+                      Text {
+                        id: snipLabel
+                        anchors.left: parent.left
+                        anchors.right: parent.right
+                        anchors.verticalCenter: parent.verticalCenter
+                        anchors.margins: Style.space(6)
+                        textFormat: Text.PlainText
+                        text: "󰆏  " + String((modelData && modelData.label) || "Copy")
+                        color: root.foreground
+                        font.family: root.fontFamily
+                        font.pixelSize: Style.font.caption
+                        elide: Text.ElideMiddle
+                      }
+                    }
+                  }
                 }
                 Text {
                   id: timeText
