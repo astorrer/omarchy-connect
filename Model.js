@@ -1,4 +1,4 @@
-var PLUGIN_VERSION = "1.1.0"
+var PLUGIN_VERSION = "1.1.1"
 var PROJECT_URL = "https://github.com/astorrer/omarchy-connect"
 
 function parseStatus(raw) {

@@ -1,5 +1,9 @@
 # Changelog
 
+## 1.1.1
+
+Threads keep Inbox at the top and the reply field at the bottom. Only the messages scroll. Esc from the reply field returns to the inbox.
+
 ## 1.1.0
 
 Control pad for notifications, messages, ping, ring, clipboard, and file share. Settings live in the panel. Hero line reports battery, notifications, and radio with a bit of personality. Footer shows the version and opens the project page.

@@ -1,10 +1,11 @@
 import QtQuick
+import QtQuick.Controls
 import QtQuick.Layouts
 import qs.Commons
 import qs.Ui
 import "Model.js" as Model
 
-Column {
+ColumnLayout {
   id: root
   property var service: null
   property var device: null
@@ -18,6 +19,9 @@ Column {
   property string draft: ""
   property string composeTo: ""
   property bool pinToNewest: true
+  property real _savedY: 0
+  property real _savedH: 0
+  property bool _keepScroll: false
 
   readonly property var conversations: service ? (service.conversations || []) : []
   readonly property var messages: service ? (service.messages || []) : []
@@ -29,10 +33,7 @@ Column {
 
   signal backRequested()
   signal releaseEditor()
-  signal scrollToEnd()
-  signal preserveScroll()
 
-  width: parent ? parent.width : 0
   spacing: Style.space(10)
 
   function openInbox() {
@@ -40,6 +41,7 @@ Column {
     thread = null
     listIndex = 0
     cursorActive = true
+    pinToNewest = true
     if (deviceId !== "") service.loadConversations(deviceId)
     releaseEditor()
   }
@@ -53,14 +55,16 @@ Column {
     if (deviceId !== "" && conversation) service.loadThread(deviceId, conversation.threadId, conversation)
     listIndex = Math.max(0, (service.messages || []).length)
     releaseEditor()
-    scrollToEnd()
+    scrollToNewest()
   }
 
   function loadOlder() {
     if (!service || !thread || service.smsLoading) return
     if (service.smsHasMore === false) return
     pinToNewest = false
-    preserveScroll()
+    _savedY = threadFlick.contentY
+    _savedH = threadFlick.contentHeight
+    _keepScroll = true
     service.loadOlder(deviceId, thread.threadId)
   }
 
@@ -72,6 +76,14 @@ Column {
     cursorActive = true
     listIndex = 0
     Qt.callLater(function() { if (toField) toField.forceActiveFocus() })
+  }
+
+  function scrollToNewest() {
+    Qt.callLater(function() {
+      Qt.callLater(function() {
+        threadFlick.contentY = Math.max(0, threadFlick.contentHeight - threadFlick.height)
+      })
+    })
   }
 
   function inboxMax() {
@@ -155,6 +167,7 @@ Column {
     if (page === "thread" && thread) {
       service.smsReply(deviceId, thread.threadId, text)
       draft = ""
+      pinToNewest = true
       Qt.callLater(function() { if (root.thread) service.loadThread(deviceId, root.thread.threadId) })
       return
     }
@@ -165,8 +178,24 @@ Column {
     openInbox()
   }
 
+  Connections {
+    target: root.service
+    function onMessagesChanged() {
+      if (root.page !== "thread") return
+      if (root.pinToNewest) {
+        root.listIndex = Math.max(root.listIndex, (root.messages || []).length)
+        root.scrollToNewest()
+      } else if (root._keepScroll) {
+        Qt.callLater(function() {
+          threadFlick.contentY = Math.max(0, root._savedY + (threadFlick.contentHeight - root._savedH))
+          root._keepScroll = false
+        })
+      }
+    }
+  }
+
   RowLayout {
-    width: parent.width
+    Layout.fillWidth: true
     spacing: Style.space(8)
 
     CursorSurface {
@@ -205,231 +234,253 @@ Column {
   }
 
   Text {
-    visible: root.loading
-    width: parent.width
+    visible: root.loading && root.page !== "thread"
+    Layout.fillWidth: true
     text: "Loading…"
     color: root.dim
     font.family: root.fontFamily
     font.pixelSize: Style.font.caption
   }
 
-  Column {
-    visible: root.page === "inbox"
-    width: parent.width
-    spacing: Style.space(6)
-
-    CursorSurface {
-      id: newRow
-      width: parent.width
-      hasCursor: root.cursorActive && root.page === "inbox" && root.listIndex === 0
-      foreground: root.foreground
-      implicitHeight: Style.space(32)
-      MouseArea {
-        anchors.fill: parent
-        hoverEnabled: true
-        cursorShape: Qt.PointingHandCursor
-        onEntered: { root.cursorActive = true; root.listIndex = 0 }
-        onClicked: root.openCompose()
-      }
-      Text {
-        anchors.verticalCenter: parent.verticalCenter
-        anchors.left: parent.left
-        anchors.leftMargin: Style.space(10)
-        text: "󰍩  New message"
-        color: root.foreground
-        font.family: root.fontFamily
-        font.pixelSize: Style.font.body
-      }
+  Flickable {
+    id: threadFlick
+    Layout.fillWidth: true
+    Layout.fillHeight: true
+    contentWidth: width
+    contentHeight: bodyColumn.implicitHeight
+    clip: true
+    boundsBehavior: Flickable.StopAtBounds
+    flickableDirection: Flickable.VerticalFlick
+    interactive: contentHeight > height
+    ScrollBar.vertical: ScrollBar { policy: ScrollBar.AsNeeded }
+    onContentYChanged: {
+      if (root.page === "thread" && contentY < 48) root.loadOlder()
     }
 
-    CursorSurface {
-      id: appRow
-      width: parent.width
-      hasCursor: root.cursorActive && root.page === "inbox" && root.listIndex === 1
-      foreground: root.foreground
-      implicitHeight: Style.space(32)
-      MouseArea {
-        anchors.fill: parent
-        hoverEnabled: true
-        cursorShape: Qt.PointingHandCursor
-        onEntered: { root.cursorActive = true; root.listIndex = 1 }
-        onClicked: if (root.service) root.service.smsApp(root.deviceId)
-      }
-      Text {
-        anchors.verticalCenter: parent.verticalCenter
-        anchors.left: parent.left
-        anchors.leftMargin: Style.space(10)
-        text: "󰏌  Open SMS app"
-        color: root.dim
-        font.family: root.fontFamily
-        font.pixelSize: Style.font.body
-      }
-    }
+    Column {
+      id: bodyColumn
+      width: threadFlick.width
+      spacing: Style.space(6)
 
-    Text {
-      visible: !root.loading && root.conversations.length === 0
-      width: parent.width
-      text: "No conversations yet. SMS needs to be enabled in KDE Connect on the phone."
-      color: root.dim
-      font.family: root.fontFamily
-      font.pixelSize: Style.font.caption
-      wrapMode: Text.WordWrap
-    }
-
-    Repeater {
-      id: convRepeater
-      model: root.conversations
-      CursorSurface {
-        id: convRow
-        required property var modelData
-        required property int index
+      Column {
+        visible: root.page === "inbox"
         width: parent.width
-        hasCursor: root.cursorActive && root.page === "inbox" && root.listIndex === index + 2
-        foreground: root.foreground
-        implicitHeight: convInner.implicitHeight + Style.spacing.rowPaddingX
-        MouseArea {
-          anchors.fill: parent
-          hoverEnabled: true
-          cursorShape: Qt.PointingHandCursor
-          onEntered: { root.cursorActive = true; root.listIndex = convRow.index + 2 }
-          onClicked: root.openThread(convRow.modelData)
+        spacing: Style.space(6)
+
+        CursorSurface {
+          id: newRow
+          width: parent.width
+          hasCursor: root.cursorActive && root.page === "inbox" && root.listIndex === 0
+          foreground: root.foreground
+          implicitHeight: Style.space(32)
+          MouseArea {
+            anchors.fill: parent
+            hoverEnabled: true
+            cursorShape: Qt.PointingHandCursor
+            onEntered: { root.cursorActive = true; root.listIndex = 0 }
+            onClicked: root.openCompose()
+          }
+          Text {
+            anchors.verticalCenter: parent.verticalCenter
+            anchors.left: parent.left
+            anchors.leftMargin: Style.space(10)
+            text: "󰍩  New message"
+            color: root.foreground
+            font.family: root.fontFamily
+            font.pixelSize: Style.font.body
+          }
         }
-        RowLayout {
-          id: convInner
-          anchors.left: parent.left
-          anchors.right: parent.right
-          anchors.verticalCenter: parent.verticalCenter
-          anchors.leftMargin: Style.space(10)
-          anchors.rightMargin: Style.space(10)
-          spacing: Style.space(8)
-          ColumnLayout {
-            Layout.fillWidth: true
-            spacing: Style.space(1)
-            RowLayout {
-              Layout.fillWidth: true
-              Text {
-                textFormat: Text.PlainText
-                text: Model.conversationTitle(convRow.modelData)
-                color: root.foreground
-                font.family: root.fontFamily
-                font.pixelSize: Style.font.body
-                elide: Text.ElideRight
-                Layout.fillWidth: true
-              }
-              Text {
-                text: Model.formatSmsTime(convRow.modelData.date)
-                color: root.dim
-                font.family: root.fontFamily
-                font.pixelSize: Style.font.caption
-              }
+
+        CursorSurface {
+          id: appRow
+          width: parent.width
+          hasCursor: root.cursorActive && root.page === "inbox" && root.listIndex === 1
+          foreground: root.foreground
+          implicitHeight: Style.space(32)
+          MouseArea {
+            anchors.fill: parent
+            hoverEnabled: true
+            cursorShape: Qt.PointingHandCursor
+            onEntered: { root.cursorActive = true; root.listIndex = 1 }
+            onClicked: if (root.service) root.service.smsApp(root.deviceId)
+          }
+          Text {
+            anchors.verticalCenter: parent.verticalCenter
+            anchors.left: parent.left
+            anchors.leftMargin: Style.space(10)
+            text: "󰏌  Open SMS app"
+            color: root.dim
+            font.family: root.fontFamily
+            font.pixelSize: Style.font.body
+          }
+        }
+
+        Text {
+          visible: !root.loading && root.conversations.length === 0
+          width: parent.width
+          text: "No conversations yet. SMS needs to be enabled in KDE Connect on the phone."
+          color: root.dim
+          font.family: root.fontFamily
+          font.pixelSize: Style.font.caption
+          wrapMode: Text.WordWrap
+        }
+
+        Repeater {
+          id: convRepeater
+          model: root.conversations
+          CursorSurface {
+            id: convRow
+            required property var modelData
+            required property int index
+            width: parent.width
+            hasCursor: root.cursorActive && root.page === "inbox" && root.listIndex === index + 2
+            foreground: root.foreground
+            implicitHeight: convInner.implicitHeight + Style.spacing.rowPaddingX
+            MouseArea {
+              anchors.fill: parent
+              hoverEnabled: true
+              cursorShape: Qt.PointingHandCursor
+              onEntered: { root.cursorActive = true; root.listIndex = convRow.index + 2 }
+              onClicked: root.openThread(convRow.modelData)
             }
-            Text {
-              textFormat: Text.PlainText
-              text: Model.previewText(convRow.modelData)
-              color: convRow.modelData.read === 0 ? root.foreground : root.dim
-              font.family: root.fontFamily
-              font.pixelSize: Style.font.caption
-              elide: Text.ElideRight
-              Layout.fillWidth: true
+            RowLayout {
+              id: convInner
+              anchors.left: parent.left
+              anchors.right: parent.right
+              anchors.verticalCenter: parent.verticalCenter
+              anchors.leftMargin: Style.space(10)
+              anchors.rightMargin: Style.space(10)
+              spacing: Style.space(8)
+              ColumnLayout {
+                Layout.fillWidth: true
+                spacing: Style.space(1)
+                RowLayout {
+                  Layout.fillWidth: true
+                  Text {
+                    textFormat: Text.PlainText
+                    text: Model.conversationTitle(convRow.modelData)
+                    color: root.foreground
+                    font.family: root.fontFamily
+                    font.pixelSize: Style.font.body
+                    elide: Text.ElideRight
+                    Layout.fillWidth: true
+                  }
+                  Text {
+                    text: Model.formatSmsTime(convRow.modelData.date)
+                    color: root.dim
+                    font.family: root.fontFamily
+                    font.pixelSize: Style.font.caption
+                  }
+                }
+                Text {
+                  textFormat: Text.PlainText
+                  text: Model.previewText(convRow.modelData)
+                  color: convRow.modelData.read === 0 ? root.foreground : root.dim
+                  font.family: root.fontFamily
+                  font.pixelSize: Style.font.caption
+                  elide: Text.ElideRight
+                  Layout.fillWidth: true
+                }
+              }
             }
           }
         }
       }
-    }
-  }
 
-  Column {
-    visible: root.page === "thread"
-    width: parent.width
-    spacing: Style.space(6)
-
-    Text {
-      visible: root.service && root.service.smsHasMore !== false
-      width: parent.width
-      text: root.loading ? "Loading older…" : "Scroll up for older messages"
-      color: root.dim
-      font.family: root.fontFamily
-      font.pixelSize: Style.font.caption
-      MouseArea {
-        anchors.fill: parent
-        enabled: !root.loading
-        cursorShape: Qt.PointingHandCursor
-        onClicked: root.loadOlder()
-      }
-    }
-
-    Text {
-      visible: !root.loading && root.messages.length === 0
-      width: parent.width
-      text: "No messages in this thread."
-      color: root.dim
-      font.family: root.fontFamily
-      font.pixelSize: Style.font.caption
-      wrapMode: Text.WordWrap
-    }
-
-    Repeater {
-      id: msgRepeater
-      model: root.service ? root.service.messages : []
-      CursorSurface {
-        id: msgRow
-        required property var modelData
-        required property int index
-        readonly property bool mine: !!modelData.fromMe
-        readonly property real maxBubble: width * 0.82
+      Column {
+        visible: root.page === "thread"
         width: parent.width
-        hasCursor: root.cursorActive && root.page === "thread" && root.listIndex === index && !root.editorFocused
-        foreground: root.foreground
-        implicitHeight: bubble.implicitHeight + Style.space(8)
-        MouseArea {
-          anchors.fill: parent
-          hoverEnabled: true
-          onEntered: { root.cursorActive = true; root.listIndex = msgRow.index }
-          onClicked: { root.listIndex = (root.service.messages || []).length; draftField.forceActiveFocus() }
+        spacing: Style.space(6)
+
+        Text {
+          visible: root.service && root.service.smsHasMore !== false
+          width: parent.width
+          text: root.loading ? "Loading older…" : "Scroll up for older messages"
+          color: root.dim
+          font.family: root.fontFamily
+          font.pixelSize: Style.font.caption
+          MouseArea {
+            anchors.fill: parent
+            enabled: !root.loading
+            cursorShape: Qt.PointingHandCursor
+            onClicked: root.loadOlder()
+          }
         }
-        BorderSurface {
-          id: bubble
-          anchors.left: msgRow.mine ? undefined : parent.left
-          anchors.right: msgRow.mine ? parent.right : undefined
-          anchors.leftMargin: Style.space(10)
-          anchors.rightMargin: Style.space(10)
-          anchors.verticalCenter: parent.verticalCenter
-          width: Math.min(msgRow.maxBubble, Math.max(bodyText.implicitWidth, timeText.implicitWidth) + Style.space(20))
-          implicitHeight: bubbleCol.implicitHeight + Style.space(16)
-          radius: Style.cornerRadius
-          color: msgRow.mine
-            ? Style.selectedFillFor(root.foreground, Color.accent)
-            : Style.normalFillFor(root.foreground, Color.accent)
-          borderSpec: msgRow.mine
-            ? Border.controlSpec("selected", root.foreground, Color.accent)
-            : Border.controlSpec("normal", root.foreground, Color.accent)
-          Column {
-            id: bubbleCol
-            anchors.left: parent.left
-            anchors.right: parent.right
-            anchors.top: parent.top
-            anchors.margins: Style.space(8)
-            spacing: Style.space(2)
-            Text {
-              id: bodyText
-              width: Math.min(msgRow.maxBubble - Style.space(20), implicitWidth)
-              textFormat: Text.PlainText
-              text: Model.messageText(msgRow.modelData)
-              color: root.foreground
-              font.family: root.fontFamily
-              font.pixelSize: Style.font.body
-              wrapMode: Text.Wrap
-              horizontalAlignment: msgRow.mine ? Text.AlignRight : Text.AlignLeft
+
+        Text {
+          visible: !root.loading && root.messages.length === 0
+          width: parent.width
+          text: "No messages in this thread."
+          color: root.dim
+          font.family: root.fontFamily
+          font.pixelSize: Style.font.caption
+          wrapMode: Text.WordWrap
+        }
+
+        Repeater {
+          id: msgRepeater
+          model: root.service ? root.service.messages : []
+          CursorSurface {
+            id: msgRow
+            required property var modelData
+            required property int index
+            readonly property bool mine: !!modelData.fromMe
+            readonly property real maxBubble: width * 0.82
+            width: parent.width
+            hasCursor: root.cursorActive && root.page === "thread" && root.listIndex === index && !root.editorFocused
+            foreground: root.foreground
+            implicitHeight: bubble.implicitHeight + Style.space(8)
+            MouseArea {
+              anchors.fill: parent
+              hoverEnabled: true
+              onEntered: { root.cursorActive = true; root.listIndex = msgRow.index }
+              onClicked: { root.listIndex = (root.service.messages || []).length; draftField.forceActiveFocus() }
             }
-            Text {
-              id: timeText
-              width: parent.width
-              textFormat: Text.PlainText
-              text: Model.formatSmsTime(msgRow.modelData.date)
-              color: root.dim
-              font.family: root.fontFamily
-              font.pixelSize: Style.font.caption
-              horizontalAlignment: msgRow.mine ? Text.AlignRight : Text.AlignLeft
+            BorderSurface {
+              id: bubble
+              anchors.left: msgRow.mine ? undefined : parent.left
+              anchors.right: msgRow.mine ? parent.right : undefined
+              anchors.leftMargin: Style.space(10)
+              anchors.rightMargin: Style.space(10)
+              anchors.verticalCenter: parent.verticalCenter
+              width: Math.min(msgRow.maxBubble, Math.max(bodyText.implicitWidth, timeText.implicitWidth) + Style.space(20))
+              implicitHeight: bubbleCol.implicitHeight + Style.space(16)
+              radius: Style.cornerRadius
+              color: msgRow.mine
+                ? Style.selectedFillFor(root.foreground, Color.accent)
+                : Style.normalFillFor(root.foreground, Color.accent)
+              borderSpec: msgRow.mine
+                ? Border.controlSpec("selected", root.foreground, Color.accent)
+                : Border.controlSpec("normal", root.foreground, Color.accent)
+              Column {
+                id: bubbleCol
+                anchors.left: parent.left
+                anchors.right: parent.right
+                anchors.top: parent.top
+                anchors.margins: Style.space(8)
+                spacing: Style.space(2)
+                Text {
+                  id: bodyText
+                  width: Math.min(msgRow.maxBubble - Style.space(20), implicitWidth)
+                  textFormat: Text.PlainText
+                  text: Model.messageText(msgRow.modelData)
+                  color: root.foreground
+                  font.family: root.fontFamily
+                  font.pixelSize: Style.font.body
+                  wrapMode: Text.Wrap
+                  horizontalAlignment: msgRow.mine ? Text.AlignRight : Text.AlignLeft
+                }
+                Text {
+                  id: timeText
+                  width: parent.width
+                  textFormat: Text.PlainText
+                  text: Model.formatSmsTime(msgRow.modelData.date)
+                  color: root.dim
+                  font.family: root.fontFamily
+                  font.pixelSize: Style.font.caption
+                  horizontalAlignment: msgRow.mine ? Text.AlignRight : Text.AlignLeft
+                }
+              }
             }
           }
         }
@@ -439,7 +490,7 @@ Column {
 
   Column {
     visible: root.page === "compose" || root.page === "thread"
-    width: parent.width
+    Layout.fillWidth: true
     spacing: Style.space(6)
 
     TextField {
@@ -478,8 +529,7 @@ Column {
           if (event.key === Qt.Key_Escape) {
             event.accepted = true
             draftField.focus = false
-            root.releaseEditor()
-            if (root.page === "compose") root.openInbox()
+            root.openInbox()
           } else if (event.key === Qt.Key_Up && root.page === "thread") {
             event.accepted = true
             draftField.focus = false

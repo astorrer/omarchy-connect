@@ -53,17 +53,6 @@ Panel {
   property int deviceIndex: 0
   property int actionIndex: 0
   property bool cursorActive: false
-  property real _savedY: 0
-  property real _savedH: 0
-  property bool _keepScroll: false
-
-  function pinThreadBottom() {
-    Qt.callLater(function() {
-      Qt.callLater(function() {
-        panelFlick.contentY = Math.max(0, panelFlick.contentHeight - panelFlick.height)
-      })
-    })
-  }
 
   implicitWidth: button.implicitWidth
   implicitHeight: button.implicitHeight
@@ -338,22 +327,6 @@ Panel {
     settings: root.settings
   }
 
-  Connections {
-    target: connect
-    function onMessagesChanged() {
-      if (root.view !== "sms" || smsView.page !== "thread") return
-      if (smsView.pinToNewest) {
-        smsView.listIndex = Math.max(smsView.listIndex, (connect.messages || []).length)
-        root.pinThreadBottom()
-      } else if (root._keepScroll) {
-        Qt.callLater(function() {
-          panelFlick.contentY = Math.max(0, root._savedY + (panelFlick.contentHeight - root._savedH))
-          root._keepScroll = false
-        })
-      }
-    }
-  }
-
   IpcHandler {
     target: root.ipcTarget
     function open(): void { root.open() }
@@ -395,7 +368,9 @@ Panel {
     open: root.opened
     focusTarget: keyCatcher
     contentWidth: panel.fittedContentWidth(Style.space(380))
-    contentHeight: panel.fittedContentHeight(column.implicitHeight, Style.space(560))
+    contentHeight: (root.view === "sms" || root.view === "notifications")
+      ? panel.fittedContentHeight(Style.space(560), Style.space(560))
+      : panel.fittedContentHeight(column.implicitHeight, Style.space(560))
 
     PanelKeyCatcher {
       id: keyCatcher
@@ -433,25 +408,67 @@ Panel {
         else if (t === ",") root.openSettings()
       }
 
-      Flickable {
-        id: panelFlick
+      ColumnLayout {
         anchors.fill: parent
-        contentWidth: width
-        contentHeight: column.implicitHeight
-        clip: true
-        boundsBehavior: Flickable.StopAtBounds
-        flickableDirection: Flickable.VerticalFlick
-        interactive: contentHeight > height
-        ScrollBar.vertical: ScrollBar { policy: ScrollBar.AsNeeded }
-        onContentYChanged: {
-          if (root.view === "sms" && smsView.page === "thread" && contentY < 48)
-            smsView.loadOlder()
+        spacing: 0
+
+        SmsView {
+          id: smsView
+          visible: root.view === "sms"
+          Layout.fillWidth: true
+          Layout.fillHeight: visible
+          service: connect
+          device: root.smsDevice || root.selectedDevice
+          foreground: root.foreground
+          dim: root.dim
+          fontFamily: root.fontFamily
+          cursorActive: root.cursorActive
+          onBackRequested: {
+            root.view = "main"
+            root.smsDevice = null
+            root.armCursor()
+            Qt.callLater(function() { keyCatcher.forceActiveFocus() })
+          }
+          onReleaseEditor: Qt.callLater(function() { keyCatcher.forceActiveFocus() })
         }
 
-        Column {
-          id: column
-          width: panelFlick.width
-          spacing: Style.space(12)
+        NotificationsView {
+          id: notifyView
+          visible: root.view === "notifications"
+          Layout.fillWidth: true
+          Layout.fillHeight: visible
+          service: connect
+          device: root.smsDevice || root.selectedDevice
+          foreground: root.foreground
+          dim: root.dim
+          fontFamily: root.fontFamily
+          cursorActive: root.cursorActive
+          onBackRequested: {
+            root.view = "main"
+            root.smsDevice = null
+            root.armCursor()
+            Qt.callLater(function() { keyCatcher.forceActiveFocus() })
+          }
+          onReleaseEditor: Qt.callLater(function() { keyCatcher.forceActiveFocus() })
+        }
+
+        Flickable {
+          id: panelFlick
+          visible: root.view === "main" || root.view === "settings"
+          Layout.fillWidth: true
+          Layout.fillHeight: visible
+          contentWidth: width
+          contentHeight: column.implicitHeight
+          clip: true
+          boundsBehavior: Flickable.StopAtBounds
+          flickableDirection: Flickable.VerticalFlick
+          interactive: contentHeight > height
+          ScrollBar.vertical: ScrollBar { policy: ScrollBar.AsNeeded }
+
+          Column {
+            id: column
+            width: panelFlick.width
+            spacing: Style.space(12)
 
           Item {
             id: header
@@ -513,50 +530,6 @@ Panel {
             id: setupButton
             visible: !connect.installed
             width: parent.width
-          }
-
-          NotificationsView {
-            id: notifyView
-            visible: root.view === "notifications"
-            width: parent.width
-            service: connect
-            device: root.smsDevice || root.selectedDevice
-            foreground: root.foreground
-            dim: root.dim
-            fontFamily: root.fontFamily
-            cursorActive: root.cursorActive
-            onBackRequested: {
-              root.view = "main"
-              root.smsDevice = null
-              root.armCursor()
-              Qt.callLater(function() { keyCatcher.forceActiveFocus() })
-            }
-            onReleaseEditor: Qt.callLater(function() { keyCatcher.forceActiveFocus() })
-          }
-
-          SmsView {
-            id: smsView
-            visible: root.view === "sms"
-            width: parent.width
-            service: connect
-            device: root.smsDevice || root.selectedDevice
-            foreground: root.foreground
-            dim: root.dim
-            fontFamily: root.fontFamily
-            cursorActive: root.cursorActive
-            onBackRequested: {
-              root.view = "main"
-              root.smsDevice = null
-              root.armCursor()
-              Qt.callLater(function() { keyCatcher.forceActiveFocus() })
-            }
-            onReleaseEditor: Qt.callLater(function() { keyCatcher.forceActiveFocus() })
-            onScrollToEnd: root.pinThreadBottom()
-            onPreserveScroll: {
-              root._savedY = panelFlick.contentY
-              root._savedH = panelFlick.contentHeight
-              root._keepScroll = true
-            }
           }
 
           Column {
@@ -830,6 +803,7 @@ Panel {
         }
       }
     }
+  }
   }
 
   Timer {

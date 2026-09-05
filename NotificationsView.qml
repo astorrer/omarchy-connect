@@ -1,10 +1,11 @@
 import QtQuick
+import QtQuick.Controls
 import QtQuick.Layouts
 import qs.Commons
 import qs.Ui
 import "Model.js" as Model
 
-Column {
+ColumnLayout {
   id: root
   property var service: null
   property var device: null
@@ -33,7 +34,6 @@ Column {
 
   onNotificationsChanged: listIndex = Math.max(0, Math.min(listMax(), listIndex))
 
-  width: parent ? parent.width : 0
   spacing: Style.space(10)
 
   function openList() {
@@ -111,7 +111,7 @@ Column {
   }
 
   RowLayout {
-    width: parent.width
+    Layout.fillWidth: true
     spacing: Style.space(8)
 
     CursorSurface {
@@ -151,17 +151,30 @@ Column {
 
   Text {
     visible: root.loading && root.page === "list"
-    width: parent.width
+    Layout.fillWidth: true
     text: "Loading…"
     color: root.dim
     font.family: root.fontFamily
     font.pixelSize: Style.font.caption
   }
 
-  Column {
-    visible: root.page === "list"
-    width: parent.width
-    spacing: Style.space(6)
+  Flickable {
+    id: notifyFlick
+    Layout.fillWidth: true
+    Layout.fillHeight: true
+    contentWidth: width
+    contentHeight: listColumn.implicitHeight
+    clip: true
+    boundsBehavior: Flickable.StopAtBounds
+    flickableDirection: Flickable.VerticalFlick
+    interactive: contentHeight > height
+    ScrollBar.vertical: ScrollBar { policy: ScrollBar.AsNeeded }
+
+    Column {
+      id: listColumn
+      visible: root.page === "list"
+      width: notifyFlick.width
+      spacing: Style.space(6)
 
     Text {
       visible: !root.loading && root.notifications.length === 0
@@ -274,11 +287,12 @@ Column {
         font.pixelSize: Style.font.body
       }
     }
+    }
   }
 
   Column {
     visible: root.page === "reply"
-    width: parent.width
+    Layout.fillWidth: true
     spacing: Style.space(8)
 
     Text {
