@@ -15,6 +15,7 @@ Panel {
 
   readonly property bool hideWhenDisconnected: !!setting("hideWhenDisconnected", false)
   readonly property bool badgeNotifications: setting("badgeNotifications", true) !== false
+  readonly property bool hideSmsNotifications: setting("hideSmsNotifications", true) !== false
   readonly property color foreground: bar ? bar.foreground : Color.foreground
   readonly property color urgent: bar ? bar.urgent : Color.urgent
   readonly property color dim: Qt.darker(foreground, 1.55)
@@ -170,6 +171,7 @@ Panel {
     if (focusSection === "settings") {
       if (settingIndex === 0) return badgeRow
       if (settingIndex === 1) return hideRow
+      if (settingIndex === 2) return hideSmsRow
       return intervalRow
     }
     if (focusSection === "actions") {
@@ -202,7 +204,7 @@ Panel {
       return
     }
     if (view === "settings") {
-      if (dx !== 0 && settingIndex === 2) {
+      if (dx !== 0 && settingIndex === 3) {
         bumpRefresh(dx > 0 ? 1 : -1)
         return
       }
@@ -214,7 +216,7 @@ Panel {
         activateCursor()
         return
       }
-      settingIndex = Math.max(0, Math.min(2, settingIndex + dy))
+      settingIndex = Math.max(0, Math.min(3, settingIndex + dy))
       scrollCursorIntoView()
       return
     }
@@ -296,6 +298,7 @@ Panel {
     if (focusSection === "settings") {
       if (settingIndex === 0) persistSettings({ badgeNotifications: !root.badgeNotifications })
       else if (settingIndex === 1) persistSettings({ hideWhenDisconnected: !root.hideWhenDisconnected })
+      else if (settingIndex === 2) persistSettings({ hideSmsNotifications: !root.hideSmsNotifications })
       else bumpRefresh(1)
       return
     }
@@ -518,6 +521,7 @@ Panel {
           dim: root.dim
           fontFamily: root.fontFamily
           cursorActive: root.cursorActive
+          hideSmsNotifications: root.hideSmsNotifications
           onBackRequested: {
             root.view = "main"
             root.smsDevice = null
@@ -832,16 +836,25 @@ Panel {
               onClicked: root.persistSettings({ hideWhenDisconnected: !root.hideWhenDisconnected })
             }
 
+            SettingToggle {
+              id: hideSmsRow
+              width: parent.width
+              label: "Hide SMS from the notification list"
+              checked: root.hideSmsNotifications
+              rowIndex: 2
+              onClicked: root.persistSettings({ hideSmsNotifications: !root.hideSmsNotifications })
+            }
+
             CursorSurface {
               id: intervalRow
               width: parent.width
-              hasCursor: root.cursorActive && root.focusSection === "settings" && root.settingIndex === 2
+              hasCursor: root.cursorActive && root.focusSection === "settings" && root.settingIndex === 3
               foreground: root.foreground
               implicitHeight: intervalInner.implicitHeight + Style.spacing.rowPaddingX
               MouseArea {
                 anchors.fill: parent
                 hoverEnabled: true
-                onEntered: { root.cursorActive = true; root.focusSection = "settings"; root.settingIndex = 2 }
+                onEntered: { root.cursorActive = true; root.focusSection = "settings"; root.settingIndex = 3 }
               }
               RowLayout {
                 id: intervalInner

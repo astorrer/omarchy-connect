@@ -1,5 +1,9 @@
 # Changelog
 
+## 1.2.8
+
+SMS is hidden from the notification list by default. It still lives in Messages. A setting brings those rows back.
+
 ## 1.2.7
 
 Back, new message, and dismiss-all are framed buttons. A rule sits under the header and above the reply field.

@@ -18,8 +18,12 @@ ColumnLayout {
   property int listIndex: 0
   property string draft: ""
   property string copiedHint: ""
+  property bool hideSmsNotifications: true
 
-  readonly property var notifications: service ? (service.notifications || []) : []
+  readonly property var allNotifications: service ? (service.notifications || []) : []
+  readonly property bool hideSms: hideSmsNotifications && !!(device && device.hasSms)
+  readonly property var notifications: Model.visibleNotifications(allNotifications, hideSms)
+  readonly property int hiddenSmsCount: Math.max(0, allNotifications.length - notifications.length)
   readonly property bool loading: service ? service.smsLoading === true : false
   readonly property string deviceId: device ? String(device.id || "") : ""
   readonly property bool editorFocused: draftField.activeFocus
@@ -114,7 +118,7 @@ ColumnLayout {
       return
     }
     if (hasDismissable && listIndex === notifications.length) {
-      if (service) service.dismissAllNotifications(deviceId)
+      dismissAllVisible()
       return
     }
     var item = notificationAtCursor()
@@ -125,11 +129,23 @@ ColumnLayout {
   function dismissCurrent() {
     if (page !== "list" || !service) return
     if (hasDismissable && listIndex === notifications.length) {
-      service.dismissAllNotifications(deviceId)
+      dismissAllVisible()
       return
     }
     var item = notificationAtCursor()
     if (item && item.dismissable) service.dismissNotification(deviceId, item.id)
+  }
+
+  function dismissAllVisible() {
+    if (!service || !deviceId) return
+    if (hiddenSmsCount === 0) {
+      service.dismissAllNotifications(deviceId)
+      return
+    }
+    for (var i = 0; i < notifications.length; i++) {
+      if (notifications[i] && notifications[i].dismissable)
+        service.dismissNotification(deviceId, notifications[i].id)
+    }
   }
 
   function sendDraft() {
@@ -219,7 +235,7 @@ ColumnLayout {
     Text {
       visible: !root.loading && root.notifications.length === 0
       width: parent.width
-      text: "No notifications from the phone right now."
+      text: root.hiddenSmsCount > 0 ? "SMS is in Messages." : "No notifications from the phone right now."
       color: root.dim
       font.family: root.fontFamily
       font.pixelSize: Style.font.caption
@@ -335,7 +351,7 @@ ColumnLayout {
       foreground: root.foreground
       fontFamily: root.fontFamily
       hasCursor: root.cursorActive && root.page === "list" && root.listIndex === root.notifications.length
-      onClicked: if (root.service) root.service.dismissAllNotifications(root.deviceId)
+      onClicked: root.dismissAllVisible()
       onHovered: function(on) { if (on) { root.cursorActive = true; root.listIndex = root.notifications.length } }
     }
     }

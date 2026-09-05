@@ -2,7 +2,7 @@
   "schemaVersion": 1,
   "id": "io.github.astorrer.connect",
   "name": "Connect",
-  "version": "1.2.7",
+  "version": "1.2.8",
   "author": "Aaron Storrer",
   "license": "MIT",
   "description": "Phone connect for the Omarchy bar. Pair a phone over the KDE Connect protocol, then ping, ring, share files, send the clipboard, read notifications, and read or send SMS.",
@@ -19,7 +19,8 @@
     "defaults": {
       "refreshIntervalSec": 8,
       "hideWhenDisconnected": false,
-      "badgeNotifications": true
+      "badgeNotifications": true,
+      "hideSmsNotifications": true
     },
     "schema": [
       {
@@ -41,6 +42,12 @@
         "key": "badgeNotifications",
         "type": "boolean",
         "label": "Badge the bar when the phone has notifications",
+        "defaultValue": true
+      },
+      {
+        "key": "hideSmsNotifications",
+        "type": "boolean",
+        "label": "Hide SMS from the notification list",
         "defaultValue": true
       }
     ]

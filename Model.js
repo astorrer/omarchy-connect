@@ -1,4 +1,4 @@
-var PLUGIN_VERSION = "1.2.7"
+var PLUGIN_VERSION = "1.2.8"
 var PROJECT_URL = "https://github.com/astorrer/omarchy-connect"
 
 function scrollFlickToItem(flick, item, margin) {
@@ -531,6 +531,34 @@ function notificationMeta(item) {
   var app = String(item.appName || "").trim()
   if (item.canReply) return app ? app + " · reply" : "Reply"
   return app
+}
+
+var SMS_APP_NAMES = {
+  "messages": true,
+  "google messages": true,
+  "messaging": true,
+  "samsung messages": true,
+  "textra": true,
+  "qksms": true,
+  "pulse": true,
+  "pulse sms": true
+}
+
+function isSmsNotification(item) {
+  var name = String((item && item.appName) || "").replace(/\s+/g, " ").trim().toLowerCase()
+  if (!name) return false
+  if (SMS_APP_NAMES[name]) return true
+  return /\bsms\b/.test(name)
+}
+
+function visibleNotifications(items, hideSms) {
+  var list = items || []
+  if (!hideSms) return list
+  var rows = []
+  for (var i = 0; i < list.length; i++) {
+    if (!isSmsNotification(list[i])) rows.push(list[i])
+  }
+  return rows
 }
 
 function barIcon(installed, running, device) {
