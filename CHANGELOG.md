@@ -1,5 +1,9 @@
 # Changelog
 
+## 1.2.3
+
+Going back to the inbox or the notification list jumps to the top, where the recent items are.
+
 ## 1.2.2
 
 Keep a just-sent message on screen until the phone actually returns it. A refresh that lands too early no longer deletes it.

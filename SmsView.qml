@@ -44,6 +44,7 @@ ColumnLayout {
     pinToNewest = true
     if (deviceId !== "") service.loadConversations(deviceId)
     releaseEditor()
+    scrollToTop()
   }
 
   function openThread(conversation) {
@@ -81,7 +82,17 @@ ColumnLayout {
   function scrollToNewest() {
     Qt.callLater(function() {
       Qt.callLater(function() {
+        if (root.page !== "thread") return
         threadFlick.contentY = Math.max(0, threadFlick.contentHeight - threadFlick.height)
+      })
+    })
+  }
+
+  function scrollToTop() {
+    Qt.callLater(function() {
+      Qt.callLater(function() {
+        if (root.page !== "inbox") return
+        threadFlick.contentY = 0
       })
     })
   }

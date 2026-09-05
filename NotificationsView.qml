@@ -44,6 +44,7 @@ ColumnLayout {
     cursorActive = true
     if (deviceId !== "") service.loadNotifications(deviceId)
     releaseEditor()
+    scrollToTop()
   }
 
   function openReply(item) {
@@ -82,6 +83,15 @@ ColumnLayout {
     var item = currentItem()
     if (!item || item === draftField || item === backButton) return
     Qt.callLater(function() { Model.scrollFlickToItem(notifyFlick, item, Style.space(8)) })
+  }
+
+  function scrollToTop() {
+    Qt.callLater(function() {
+      Qt.callLater(function() {
+        if (root.page !== "list") return
+        notifyFlick.contentY = 0
+      })
+    })
   }
 
   function activateList() {
