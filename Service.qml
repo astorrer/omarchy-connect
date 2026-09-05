@@ -135,12 +135,30 @@ Item {
 
   function mergeMessages(incoming) {
     var byId = {}
+    var claimed = {}
     var i
+    var j
     for (i = 0; i < messages.length; i++) {
       if (messages[i] && messages[i].pending) continue
       byId[String(messages[i].id)] = messages[i]
     }
     for (i = 0; i < incoming.length; i++) byId[String(incoming[i].id)] = incoming[i]
+    for (i = 0; i < messages.length; i++) {
+      var pending = messages[i]
+      if (!pending || !pending.pending) continue
+      var body = String(pending.body || "").trim()
+      var matched = false
+      for (j = 0; j < incoming.length; j++) {
+        var real = incoming[j]
+        if (!real || !real.fromMe) continue
+        if (String(real.body || "").trim() !== body) continue
+        if (claimed[String(real.id)]) continue
+        claimed[String(real.id)] = true
+        matched = true
+        break
+      }
+      if (!matched) byId[String(pending.id)] = pending
+    }
     var rows = []
     for (var key in byId) rows.push(byId[key])
     rows.sort(function(a, b) { return (a.date || 0) - (b.date || 0) })
@@ -194,7 +212,11 @@ Item {
   function loadOlder(id, threadId) {
     if (!id || threadId === undefined || threadId === null || threadId === "") return
     if (smsHasMore === false) return
-    var have = messages.length
+    var have = 0
+    for (var i = 0; i < messages.length; i++) {
+      if (messages[i] && messages[i].pending) continue
+      have += 1
+    }
     runSms("older", ["conversation", id, String(threadId), String(have), String(have + 12)])
   }
 
@@ -279,6 +301,13 @@ Item {
   }
 
   Timer {
+    id: threadRefreshTimer
+    interval: 1200
+    repeat: false
+    onTriggered: root.refreshThread()
+  }
+
+  Timer {
     id: settleTimer
     interval: 2000
     repeat: true
@@ -330,7 +359,7 @@ Item {
       }
       if (root._reloadThread) {
         root._reloadThread = false
-        root.refreshThread()
+        threadRefreshTimer.restart()
       }
     }
   }

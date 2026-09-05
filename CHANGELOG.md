@@ -1,5 +1,9 @@
 # Changelog
 
+## 1.2.2
+
+Keep a just-sent message on screen until the phone actually returns it. A refresh that lands too early no longer deletes it.
+
 ## 1.2.1
 
 Sending a reply shows it in the thread immediately, then syncs with the phone. Reloading the thread is no longer required.
