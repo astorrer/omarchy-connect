@@ -4,7 +4,7 @@ import unittest
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
-from connectlib.notifications import parse_notification
+from connectlib.notice import parse_notification
 
 
 class NotificationsTest(unittest.TestCase):
