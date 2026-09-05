@@ -1,0 +1,6 @@
+__pycache__/
+*.pyc
+*.qmlc
+.qmlcache/
+*.swp
+.DS_Store

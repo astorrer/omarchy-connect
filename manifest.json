@@ -1,0 +1,41 @@
+{
+  "schemaVersion": 1,
+  "id": "io.github.astorrer.connect",
+  "name": "Connect",
+  "version": "0.1.0",
+  "author": "Aaron Storrer",
+  "license": "MIT",
+  "description": "Phone connect for the Omarchy bar. Pair a phone over the KDE Connect protocol and ping, ring, share files, and send the clipboard from the shell.",
+  "kinds": ["bar-widget"],
+  "entryPoints": {
+    "barWidget": "Panel.qml"
+  },
+  "barWidget": {
+    "displayName": "Connect",
+    "description": "Phone battery, pairing, ping, ring, clipboard, and file share.",
+    "category": "Network",
+    "allowMultiple": false,
+    "defaultSection": "right",
+    "defaults": {
+      "refreshIntervalSec": 8,
+      "hideWhenDisconnected": false
+    },
+    "schema": [
+      {
+        "key": "refreshIntervalSec",
+        "type": "integer",
+        "label": "Refresh interval (seconds)",
+        "min": 3,
+        "max": 120,
+        "step": 1,
+        "defaultValue": 8
+      },
+      {
+        "key": "hideWhenDisconnected",
+        "type": "boolean",
+        "label": "Hide when no phone is reachable",
+        "defaultValue": false
+      }
+    ]
+  }
+}
