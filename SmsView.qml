@@ -575,15 +575,9 @@ ColumnLayout {
             readonly property var atts: Model.messageAttachments(modelData)
             readonly property var snips: Model.messageCopySnippets(modelData)
             width: parent.width
-            hasCursor: root.cursorActive && root.page === "thread" && root.listIndex === index && !root.editorFocused
+            hasCursor: root.cursorActive && root.page === "thread" && root.listIndex === index && !root.editorFocused && msgRow.snips.length > 0
             foreground: root.foreground
             implicitHeight: bubble.implicitHeight + Style.space(8)
-            MouseArea {
-              anchors.fill: parent
-              hoverEnabled: true
-              onEntered: { root.cursorActive = true; root.listIndex = msgRow.index }
-              onClicked: { root.listIndex = (root.service.messages || []).length; draftField.forceActiveFocus() }
-            }
             BorderSurface {
               id: bubble
               anchors.left: msgRow.mine ? undefined : parent.left

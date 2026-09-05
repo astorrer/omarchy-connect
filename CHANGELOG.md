@@ -1,5 +1,9 @@
 # Changelog
 
+## 1.2.19
+
+Message bubbles are not click targets. Only a copy chip is.
+
 ## 1.2.18
 
 Picking a contact who already has a thread opens that thread instead of a blank compose.
