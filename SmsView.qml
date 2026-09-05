@@ -375,42 +375,62 @@ Column {
         id: msgRow
         required property var modelData
         required property int index
+        readonly property bool mine: !!modelData.fromMe
+        readonly property real maxBubble: width * 0.82
         width: parent.width
         hasCursor: root.cursorActive && root.page === "thread" && root.listIndex === index && !root.editorFocused
         foreground: root.foreground
-        implicitHeight: msgInner.implicitHeight + Style.space(8)
+        implicitHeight: bubble.implicitHeight + Style.space(8)
         MouseArea {
           anchors.fill: parent
           hoverEnabled: true
           onEntered: { root.cursorActive = true; root.listIndex = msgRow.index }
           onClicked: { root.listIndex = (root.service.messages || []).length; draftField.forceActiveFocus() }
         }
-        Column {
-          id: msgInner
-          anchors.left: msgRow.modelData.fromMe ? undefined : parent.left
-          anchors.right: msgRow.modelData.fromMe ? parent.right : undefined
+        BorderSurface {
+          id: bubble
+          anchors.left: msgRow.mine ? undefined : parent.left
+          anchors.right: msgRow.mine ? parent.right : undefined
           anchors.leftMargin: Style.space(10)
           anchors.rightMargin: Style.space(10)
-          width: parent.width * 0.82
-          spacing: Style.space(2)
-          Text {
-            width: parent.width
-            textFormat: Text.PlainText
-            text: Model.messageText(msgRow.modelData)
-            color: root.foreground
-            font.family: root.fontFamily
-            font.pixelSize: Style.font.body
-            wrapMode: Text.Wrap
-            horizontalAlignment: msgRow.modelData.fromMe ? Text.AlignRight : Text.AlignLeft
-          }
-          Text {
-            width: parent.width
-            textFormat: Text.PlainText
-            text: Model.formatSmsTime(msgRow.modelData.date)
-            color: root.dim
-            font.family: root.fontFamily
-            font.pixelSize: Style.font.caption
-            horizontalAlignment: msgRow.modelData.fromMe ? Text.AlignRight : Text.AlignLeft
+          anchors.verticalCenter: parent.verticalCenter
+          width: Math.min(msgRow.maxBubble, Math.max(bodyText.implicitWidth, timeText.implicitWidth) + Style.space(20))
+          implicitHeight: bubbleCol.implicitHeight + Style.space(16)
+          radius: Style.cornerRadius
+          color: msgRow.mine
+            ? Style.selectedFillFor(root.foreground, Color.accent)
+            : Style.normalFillFor(root.foreground, Color.accent)
+          borderSpec: msgRow.mine
+            ? Border.controlSpec("selected", root.foreground, Color.accent)
+            : Border.controlSpec("normal", root.foreground, Color.accent)
+          Column {
+            id: bubbleCol
+            anchors.left: parent.left
+            anchors.right: parent.right
+            anchors.top: parent.top
+            anchors.margins: Style.space(8)
+            spacing: Style.space(2)
+            Text {
+              id: bodyText
+              width: Math.min(msgRow.maxBubble - Style.space(20), implicitWidth)
+              textFormat: Text.PlainText
+              text: Model.messageText(msgRow.modelData)
+              color: root.foreground
+              font.family: root.fontFamily
+              font.pixelSize: Style.font.body
+              wrapMode: Text.Wrap
+              horizontalAlignment: msgRow.mine ? Text.AlignRight : Text.AlignLeft
+            }
+            Text {
+              id: timeText
+              width: parent.width
+              textFormat: Text.PlainText
+              text: Model.formatSmsTime(msgRow.modelData.date)
+              color: root.dim
+              font.family: root.fontFamily
+              font.pixelSize: Style.font.caption
+              horizontalAlignment: msgRow.mine ? Text.AlignRight : Text.AlignLeft
+            }
           }
         }
       }
