@@ -1,5 +1,9 @@
 # Changelog
 
+## 1.2.10
+
+The bar badge and Notifications count ignore SMS when those rows are hidden from the list.
+
 ## 1.2.9
 
 Settings toggles flip when you click the row. The switch no longer fights the highlight for the click.

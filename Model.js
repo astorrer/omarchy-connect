@@ -1,4 +1,4 @@
-var PLUGIN_VERSION = "1.2.9"
+var PLUGIN_VERSION = "1.2.10"
 var PROJECT_URL = "https://github.com/astorrer/omarchy-connect"
 
 function scrollFlickToItem(flick, item, margin) {
@@ -42,7 +42,7 @@ function batteryText(device) {
   return device.battery + "%" + (device.charging ? " charging" : "")
 }
 
-function deviceMeta(device) {
+function deviceMeta(device, hideSms) {
   if (!device) return ""
   if (device.pairRequestedByPeer) return "Wants to pair"
   if (device.pairRequested) return "Pairing requested"
@@ -52,8 +52,8 @@ function deviceMeta(device) {
   var battery = batteryText(device)
   if (battery) parts.push(battery)
   if (device.networkType) parts.push(String(device.networkType))
-  if (typeof device.notificationCount === "number" && device.notificationCount > 0)
-    parts.push(device.notificationCount === 1 ? "1 notification" : device.notificationCount + " notifications")
+  var notes = notificationBadgeCount(device, hideSms)
+  if (notes > 0) parts.push(notes === 1 ? "1 notification" : notes + " notifications")
   return parts.length ? parts.join(" · ") : "Connected"
 }
 
@@ -68,7 +68,15 @@ function primaryDevice(devices) {
   return devices[0]
 }
 
-function actionRows(device) {
+function notificationBadgeCount(device, hideSms) {
+  if (!device) return 0
+  var total = typeof device.notificationCount === "number" ? device.notificationCount : 0
+  if (!hideSms || !device.hasSms) return total
+  var sms = typeof device.smsNotificationCount === "number" ? device.smsNotificationCount : 0
+  return Math.max(0, total - sms)
+}
+
+function actionRows(device, hideSms) {
   if (!device) return []
   var rows = []
   if (device.pairRequestedByPeer) {
@@ -82,8 +90,8 @@ function actionRows(device) {
     rows = [{ id: "unpair", label: "Unpair", icon: "󰌺", kind: "danger" }]
   } else {
     var notifyLabel = "Notifications"
-    var count = device.notificationCount
-    if (typeof count === "number" && count > 0) notifyLabel = "Notifications (" + count + ")"
+    var count = notificationBadgeCount(device, hideSms)
+    if (count > 0) notifyLabel = "Notifications (" + count + ")"
     rows = [
       { id: "notifications", label: notifyLabel, icon: "󰎕", kind: "inbox" },
       { id: "messages", label: "Messages", icon: "󰍥", kind: "inbox" },
@@ -183,7 +191,7 @@ function moveActionIndex(actions, current, dx, dy) {
   return i
 }
 
-function heroPhrases(device) {
+function heroPhrases(device, hideSms) {
   if (!device || !device.paired || !device.reachable) return []
   var name = String(device.name || "the phone")
   var short = name.split(" ")[0] || name
@@ -196,8 +204,8 @@ function heroPhrases(device) {
     else if (battery >= 90) phrases.push(short + " is topped up at " + battery + "%")
     else phrases.push(short + " is wandering at " + battery + "%")
   }
-  var n = device.notificationCount
-  if (typeof n === "number" && n > 0)
+  var n = notificationBadgeCount(device, hideSms)
+  if (n > 0)
     phrases.push(n === 1 ? "One note is waiting in the pocket" : n + " notes waiting in the pocket")
   else phrases.push("Inbox is quiet. For now.")
   var net = String(device.networkType || "")
@@ -545,6 +553,8 @@ var SMS_APP_NAMES = {
 }
 
 function isSmsNotification(item) {
+  if (item && item.sms === true) return true
+  if (item && item.sms === false) return false
   var name = String((item && item.appName) || "").replace(/\s+/g, " ").trim().toLowerCase()
   if (!name) return false
   if (SMS_APP_NAMES[name]) return true

@@ -4,7 +4,7 @@ import unittest
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
-from connectlib.notice import parse_notification
+from connectlib.notice import is_sms_notification, parse_notification
 
 
 class NotificationsTest(unittest.TestCase):
@@ -50,6 +50,14 @@ class NotificationsTest(unittest.TestCase):
         self.assertEqual(item["id"], "1")
         self.assertEqual(item["title"], "")
         self.assertFalse(item["canReply"])
+
+    def test_sms_app_names(self):
+        self.assertTrue(is_sms_notification({"appName": "Messages"}))
+        self.assertTrue(is_sms_notification({"appName": "Google Messages"}))
+        self.assertTrue(parse_notification("1", {"appName": "Messages"})["sms"])
+        self.assertFalse(is_sms_notification({"appName": "WhatsApp"}))
+        self.assertFalse(is_sms_notification({"appName": "Wyze"}))
+        self.assertFalse(parse_notification("2", {"appName": "Wyze"})["sms"])
 
 
 if __name__ == "__main__":

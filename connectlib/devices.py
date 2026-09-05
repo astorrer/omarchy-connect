@@ -103,6 +103,7 @@ def read_device(bus, device_id: str) -> dict:
         "cellularNetworkStrength",
         -1,
     )
+    counts = _notification_counts(bus, device_id)
     return {
         "id": device_id,
         "name": str(get_prop(bus, path, DEVICE_IFACE, "name", device_id) or device_id),
@@ -118,23 +119,24 @@ def read_device(bus, device_id: str) -> dict:
         "plugins": plugins,
         "hasSms": has_plugin(bus, device_id, "kdeconnect_sms") or "sms" in plugins,
         "hasNotifications": has_plugin(bus, device_id, "kdeconnect_notifications") or "notifications" in plugins,
-        "notificationCount": _notification_count(bus, device_id),
+        "notificationCount": counts[0],
+        "smsNotificationCount": counts[1],
     }
 
 
-def _notification_count(bus, device_id: str) -> int:
+def _notification_counts(bus, device_id: str) -> tuple[int, int]:
     try:
-        result = call(
-            bus,
-            plugin_path(device_id, "notifications"),
-            "org.kde.kdeconnect.device.notifications",
-            "activeNotifications",
-            None,
-            "(as)",
-        )
-        return len(result.unpack()[0] or [])
+        from .notice import is_sms_notification
+        from .notifications import list_notifications
+
+        rows = list_notifications(bus, device_id)
     except GLib.Error:
-        return 0
+        return 0, 0
+    sms = 0
+    for row in rows:
+        if is_sms_notification(row):
+            sms += 1
+    return len(rows), sms
 
 
 def sort_devices(devices: list[dict]) -> list[dict]:

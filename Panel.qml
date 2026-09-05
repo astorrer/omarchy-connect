@@ -31,11 +31,11 @@ Panel {
     if (connect.devices.length === 0) return null
     return connect.devices[Math.max(0, Math.min(deviceIndex, connect.devices.length - 1))]
   }
-  readonly property var actions: Model.actionRows(selectedDevice)
+  readonly property var actions: Model.actionRows(selectedDevice, hideSmsNotifications)
 
   property int phraseIndex: 0
   property int settingIndex: 0
-  readonly property var livePhrases: Model.heroPhrases(primary)
+  readonly property var livePhrases: Model.heroPhrases(primary, hideSmsNotifications)
   readonly property string heroPhraseText: {
     if (!connect.installed) return "Not installed"
     if (!connect.active) return "Turned off"
@@ -414,7 +414,7 @@ Panel {
           iconSize: Style.space(12)
           color: root.barIconColor
           dimmed: !root.phoneLive
-          badge: !!(root.primary && (root.primary.pairRequestedByPeer || (root.badgeNotifications && root.primary.notificationCount > 0)))
+          badge: !!(root.primary && (root.primary.pairRequestedByPeer || (root.badgeNotifications && Model.notificationBadgeCount(root.primary, root.hideSmsNotifications) > 0)))
         }
       }
     }
@@ -1075,7 +1075,7 @@ Panel {
         }
         Text {
           textFormat: Text.PlainText
-          text: Model.deviceMeta(deviceRow.device)
+          text: Model.deviceMeta(deviceRow.device, root.hideSmsNotifications)
           color: deviceRow.device && deviceRow.device.pairRequestedByPeer ? root.urgent : root.dim
           font.family: root.fontFamily
           font.pixelSize: Style.font.caption
