@@ -24,6 +24,7 @@ ColumnLayout {
   property real _savedY: 0
   property real _savedH: 0
   property bool _keepScroll: false
+  property int _lastConvCount: 0
   property string copiedHint: ""
 
   readonly property var conversations: service ? (service.conversations || []) : []
@@ -32,7 +33,6 @@ ColumnLayout {
   readonly property string deviceId: device ? String(device.id || "") : ""
   readonly property bool composing: page === "compose" || page === "thread"
   readonly property bool editorFocused: toField.activeFocus || draftField.activeFocus
-  readonly property int listCount: page === "inbox" ? conversations.length + 2 : messages.length
   readonly property int inboxToolStart: conversations.length
   readonly property bool inboxToolsFocused: page === "inbox" && listIndex >= inboxToolStart
   readonly property var contactMatches: Model.filterContacts(service ? service.contacts : [], composeTo)
@@ -46,6 +46,7 @@ ColumnLayout {
     page = "inbox"
     thread = null
     listIndex = 0
+    _lastConvCount = conversations.length
     cursorActive = true
     pinToNewest = true
     if (deviceId !== "") service.loadConversations(deviceId)
@@ -96,10 +97,7 @@ ColumnLayout {
     if (!existing) return false
     var pending = String(draft || "")
     openThread(existing)
-    if (pending !== "") {
-      draft = pending
-      if (draftField) draftField.text = pending
-    }
+    if (pending !== "") draft = pending
     Qt.callLater(function() { if (draftField) draftField.forceActiveFocus() })
     return true
   }
@@ -110,7 +108,6 @@ ColumnLayout {
     composeName = Model.contactLabel(contact)
     composeNumber = String(contact.phone || "")
     composeTo = composeName || composeNumber
-    if (toField) toField.text = composeTo
     listIndex = 0
     Qt.callLater(function() { if (draftField) draftField.forceActiveFocus() })
   }
@@ -151,10 +148,6 @@ ColumnLayout {
     var item = currentItem()
     if (!item || item === draftField || item === toField || item === backButton || item === newRow || item === appRow) return
     Qt.callLater(function() { Model.scrollFlickToItem(threadFlick, item, Style.space(8)) })
-  }
-
-  function inboxMax() {
-    return 1 + conversations.length
   }
 
   function threadMax() {
@@ -270,37 +263,46 @@ ColumnLayout {
   function sendDraft() {
     var text = String(draft || "").trim()
     if (!service || !deviceId || text === "") return
+    if (page === "compose") {
+      if (!composeNumber && !Model.looksLikePhone(composeTo)) {
+        if (contactMatches.length === 0) return
+        pickContact(contactMatches[Math.max(0, Math.min(listIndex, contactMatches.length - 1))])
+      }
+      if (page === "compose") {
+        var number = String(composeNumber || composeTo || "").trim()
+        if (number === "" || (!composeNumber && !Model.looksLikePhone(number))) return
+        var existing = Model.findConversationForPhones(conversations, [number])
+        if (existing) openThread(existing)
+        else {
+          service.smsSend(deviceId, number, text)
+          draft = ""
+          openInbox()
+          return
+        }
+      }
+    }
     if (page === "thread" && thread) {
       pinToNewest = true
       service.smsReply(deviceId, thread.threadId, text)
       draft = ""
-      if (draftField) draftField.text = ""
       listIndex = (service.messages || []).length
       scrollToNewest()
-      return
     }
-    var number = String(composeNumber || composeTo || "").trim()
-    if (number === "") return
-    var existing = Model.findConversationForPhones(conversations, [number].concat(composeNumber ? [composeNumber] : []))
-    if (existing) {
-      openThread(existing)
-      pinToNewest = true
-      service.smsReply(deviceId, existing.threadId, text)
-      draft = ""
-      if (draftField) draftField.text = ""
-      listIndex = (service.messages || []).length
-      scrollToNewest()
-      return
-    }
-    service.smsSend(deviceId, number, text)
-    draft = ""
-    if (draftField) draftField.text = ""
-    openInbox()
   }
 
   Connections {
     target: root.service
     function onConversationsChanged() {
+      var n = (root.conversations || []).length
+      if (root.page === "inbox") {
+        if (root._lastConvCount === 0 && n > 0 && root.listIndex <= 1)
+          root.listIndex = 0
+        else if (root.listIndex >= root._lastConvCount)
+          root.listIndex = n + Math.min(1, Math.max(0, root.listIndex - root._lastConvCount))
+        else if (root.listIndex >= n)
+          root.listIndex = Math.max(0, n - 1)
+      }
+      root._lastConvCount = n
       if (root.page !== "compose") return
       var phones = []
       if (root.composeNumber) phones.push(root.composeNumber)
@@ -781,8 +783,8 @@ ColumnLayout {
           root.openInbox()
         } else if (event.key === Qt.Key_Down) {
           event.accepted = true
-          if (root.contactMatches.length > 0)
-            root.listIndex = Math.min(root.contactMatches.length - 1, root.listIndex + 1)
+          if (root.contactMatches.length > 0 && root.listIndex < root.contactMatches.length - 1)
+            root.listIndex += 1
           else
             draftField.forceActiveFocus()
         } else if (event.key === Qt.Key_Up) {

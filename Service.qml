@@ -137,13 +137,15 @@ Item {
   function runSms(kind, args, seedMessages) {
     lastError = ""
     if (kind === "thread" && seedMessages) messages = seedMessages
+    var job = { kind: kind, args: args, threadId: String(smsThreadId || "") }
     if (smsProcess.running) {
-      _smsQueue.push({ kind: kind, args: args })
+      _smsQueue.push(job)
       smsLoading = true
       return
     }
     smsLoading = true
     smsProcess._kind = kind
+    smsProcess._threadId = job.threadId
     smsProcess.command = helper(args)
     smsProcess.running = true
   }
@@ -385,22 +387,26 @@ Item {
   Process {
     id: smsProcess
     property string _kind: ""
+    property string _threadId: ""
     running: false
     command: []
     stdout: StdioCollector { id: smsStdout; waitForEnd: true }
     onExited: function() {
       var parsed = Model.parseStatus(smsStdout.text)
+      var kind = smsProcess._kind
+      var staleThread = (kind === "thread" || kind === "refresh" || kind === "older")
+        && String(smsProcess._threadId || "") !== String(root.smsThreadId || "")
       if (parsed && parsed.ok === false) {
         var err = String(parsed.error || parsed.lastError || "SMS failed")
         if (err.toLowerCase().indexOf("timeout") === -1) root.lastError = err
-      } else {
+      } else if (!staleThread) {
         root.lastError = ""
-        if (smsProcess._kind === "conversations") root.conversations = parsed.conversations || []
-        else if (smsProcess._kind === "contacts") root.contacts = parsed.contacts || []
-        else if (smsProcess._kind === "notifications") root.notifications = parsed.notifications || []
-        else if (smsProcess._kind === "thread") root.messages = parsed.messages || []
-        else if (smsProcess._kind === "refresh") root.mergeMessages(parsed.messages || [])
-        else if (smsProcess._kind === "older") {
+        if (kind === "conversations") root.conversations = parsed.conversations || []
+        else if (kind === "contacts") root.contacts = parsed.contacts || []
+        else if (kind === "notifications") root.notifications = parsed.notifications || []
+        else if (kind === "thread") root.messages = parsed.messages || []
+        else if (kind === "refresh") root.mergeMessages(parsed.messages || [])
+        else if (kind === "older") {
           var before = root.messages.length
           root.mergeMessages(parsed.messages || [])
           if (root.messages.length <= before) root.smsHasMore = false
@@ -409,6 +415,7 @@ Item {
       if (root._smsQueue.length > 0) {
         var next = root._smsQueue.shift()
         root.smsProcess._kind = next.kind
+        root.smsProcess._threadId = next.threadId || ""
         root.smsProcess.command = root.helper(next.args)
         root.smsProcess.running = true
         return

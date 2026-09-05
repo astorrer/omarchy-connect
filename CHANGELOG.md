@@ -1,5 +1,9 @@
 # Changelog
 
+## 1.2.21
+
+Inbox highlight stays on the footer tools when conversations load. Compose will not send a contact name as a phone number, and a late thread fetch cannot overwrite the open chat.
+
 ## 1.2.20
 
 Composing to someone prefers their 1:1 thread over a group they are in. Quality sweep: drop a dead icon helper and keep the SMS-app name lists in lockstep.

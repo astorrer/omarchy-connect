@@ -153,7 +153,6 @@ ColumnLayout {
     if (!service || !deviceId || !current || text === "") return
     service.replyNotification(deviceId, current.id, text)
     draft = ""
-    if (draftField) draftField.text = ""
     openList()
   }
 
