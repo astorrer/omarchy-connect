@@ -1,0 +1,254 @@
+from __future__ import annotations
+
+import subprocess
+from pathlib import Path
+
+import gi
+
+gi.require_version("Gio", "2.0")
+from gi.repository import GLib
+
+from .bus import (
+    BUS_NAME,
+    DAEMON_IFACE,
+    DAEMON_PATH,
+    DEVICE_IFACE,
+    call,
+    device_path,
+    get_prop,
+    name_has_owner,
+    plugin_path,
+    session_bus,
+    try_call,
+    unpack_string_list,
+)
+from .util import emit, fail
+
+
+def device_ids(bus) -> list[str]:
+    result = try_call(
+        bus,
+        DAEMON_PATH,
+        DAEMON_IFACE,
+        [
+            ("devices", GLib.Variant("(b)", (False,))),
+            ("devices", None),
+        ],
+    )
+    ids = result.unpack()[0] if result.n_children() else []
+    return [str(item) for item in ids]
+
+
+def plugin_names(bus, device_id: str) -> list[str]:
+    path = device_path(device_id)
+    names = get_prop(bus, path, DEVICE_IFACE, "supportedPlugins", []) or []
+    if not names:
+        try:
+            names = unpack_string_list(call(bus, path, DEVICE_IFACE, "loadedPlugins", None))
+        except GLib.Error:
+            names = []
+    cleaned = []
+    for name in names:
+        text = str(name)
+        if text.startswith("kdeconnect_"):
+            text = text.split("_", 1)[-1]
+        cleaned.append(text)
+    return cleaned
+
+
+def has_plugin(bus, device_id: str, name: str) -> bool:
+    try:
+        return bool(
+            call(
+                bus,
+                device_path(device_id),
+                DEVICE_IFACE,
+                "hasPlugin",
+                GLib.Variant("(s)", (name,)),
+                "b",
+            ).unpack()[0]
+        )
+    except GLib.Error:
+        return False
+
+
+def read_device(bus, device_id: str) -> dict:
+    path = device_path(device_id)
+    plugins = plugin_names(bus, device_id)
+    battery = -1
+    charging = False
+    charge = get_prop(bus, plugin_path(device_id, "battery"), "org.kde.kdeconnect.device.battery", "charge", None)
+    charging_val = get_prop(
+        bus,
+        plugin_path(device_id, "battery"),
+        "org.kde.kdeconnect.device.battery",
+        "isCharging",
+        None,
+    )
+    if isinstance(charge, int):
+        battery = charge
+    if isinstance(charging_val, bool):
+        charging = charging_val
+    network_type = get_prop(
+        bus,
+        plugin_path(device_id, "connectivity_report"),
+        "org.kde.kdeconnect.device.connectivity_report",
+        "cellularNetworkType",
+        "",
+    )
+    network_strength = get_prop(
+        bus,
+        plugin_path(device_id, "connectivity_report"),
+        "org.kde.kdeconnect.device.connectivity_report",
+        "cellularNetworkStrength",
+        -1,
+    )
+    return {
+        "id": device_id,
+        "name": str(get_prop(bus, path, DEVICE_IFACE, "name", device_id) or device_id),
+        "type": str(get_prop(bus, path, DEVICE_IFACE, "type", "") or ""),
+        "reachable": bool(get_prop(bus, path, DEVICE_IFACE, "isReachable", False)),
+        "paired": bool(get_prop(bus, path, DEVICE_IFACE, "isPaired", False)),
+        "pairRequested": bool(get_prop(bus, path, DEVICE_IFACE, "isPairRequested", False)),
+        "pairRequestedByPeer": bool(get_prop(bus, path, DEVICE_IFACE, "isPairRequestedByPeer", False)),
+        "battery": battery,
+        "charging": charging,
+        "networkType": str(network_type or ""),
+        "networkStrength": int(network_strength) if isinstance(network_strength, int) else -1,
+        "plugins": plugins,
+        "hasSms": has_plugin(bus, device_id, "kdeconnect_sms") or "sms" in plugins,
+    }
+
+
+def sort_devices(devices: list[dict]) -> list[dict]:
+    def key(device: dict):
+        return (
+            0 if device.get("reachable") and device.get("paired") else 1,
+            0 if device.get("pairRequestedByPeer") else 1,
+            0 if device.get("reachable") else 1,
+            str(device.get("name") or "").lower(),
+        )
+
+    return sorted(devices, key=key)
+
+
+def require_device(device_id: str) -> tuple:
+    if not device_id:
+        fail("Missing device id")
+    bus = session_bus()
+    if not name_has_owner(bus, BUS_NAME):
+        fail("KDE Connect is not running")
+    return bus, device_id
+
+
+def cmd_ping(args: list[str]) -> None:
+    bus, device_id = require_device(args[0] if args else "")
+    try_call(
+        bus,
+        plugin_path(device_id, "ping"),
+        "org.kde.kdeconnect.device.ping",
+        [("sendPing", None), ("sendPing", GLib.Variant("(s)", ("Ping from Connect",)))],
+    )
+    emit({"ok": True})
+
+
+def cmd_ring(args: list[str]) -> None:
+    bus, device_id = require_device(args[0] if args else "")
+    try_call(
+        bus,
+        plugin_path(device_id, "findmyphone"),
+        "org.kde.kdeconnect.device.findmyphone",
+        [("ring", None)],
+    )
+    emit({"ok": True})
+
+
+def cmd_pair(args: list[str]) -> None:
+    bus, device_id = require_device(args[0] if args else "")
+    try_call(
+        bus,
+        device_path(device_id),
+        DEVICE_IFACE,
+        [("requestPairing", None), ("requestPair", None)],
+    )
+    emit({"ok": True})
+
+
+def cmd_unpair(args: list[str]) -> None:
+    bus, device_id = require_device(args[0] if args else "")
+    call(bus, device_path(device_id), DEVICE_IFACE, "unpair", None)
+    emit({"ok": True})
+
+
+def cmd_accept(args: list[str]) -> None:
+    bus, device_id = require_device(args[0] if args else "")
+    try_call(
+        bus,
+        device_path(device_id),
+        DEVICE_IFACE,
+        [("acceptPairing", None), ("acceptPairingRequest", None)],
+    )
+    emit({"ok": True})
+
+
+def cmd_reject(args: list[str]) -> None:
+    bus, device_id = require_device(args[0] if args else "")
+    try_call(
+        bus,
+        device_path(device_id),
+        DEVICE_IFACE,
+        [("rejectPairing", None), ("rejectPairingRequest", None)],
+    )
+    emit({"ok": True})
+
+
+def cmd_share_file(args: list[str]) -> None:
+    if len(args) < 2:
+        fail("Usage: share-file <device-id> <path>")
+    bus, device_id = require_device(args[0])
+    path = Path(args[1]).expanduser().resolve()
+    if not path.exists():
+        fail(f"File not found: {path}")
+    uri = path.as_uri()
+    call(
+        bus,
+        plugin_path(device_id, "share"),
+        "org.kde.kdeconnect.device.share",
+        "shareUrl",
+        GLib.Variant("(s)", (uri,)),
+    )
+    emit({"ok": True, "uri": uri})
+
+
+def cmd_share_text(args: list[str]) -> None:
+    if len(args) < 2:
+        fail("Usage: share-text <device-id> <text>")
+    bus, device_id = require_device(args[0])
+    text = " ".join(args[1:])
+    call(
+        bus,
+        plugin_path(device_id, "share"),
+        "org.kde.kdeconnect.device.share",
+        "shareText",
+        GLib.Variant("(s)", (text,)),
+    )
+    emit({"ok": True})
+
+
+def cmd_send_clipboard(args: list[str]) -> None:
+    bus, device_id = require_device(args[0] if args else "")
+    try:
+        try_call(
+            bus,
+            plugin_path(device_id, "clipboard"),
+            "org.kde.kdeconnect.device.clipboard",
+            [("sendClipboard", None)],
+        )
+    except GLib.Error:
+        clip = subprocess.run(["wl-paste", "--no-newline"], capture_output=True, text=True, check=False)
+        text = clip.stdout if clip.returncode == 0 else ""
+        if not text:
+            fail("Clipboard is empty")
+        cmd_share_text([device_id, text])
+        return
+    emit({"ok": True})

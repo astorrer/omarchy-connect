@@ -1,0 +1,44 @@
+#!/usr/bin/env bash
+# Run the checks that should stay green on main.
+set -euo pipefail
+
+ROOT=$(cd "$(dirname "$0")/.." && pwd)
+cd "$ROOT"
+failed=0
+
+run() {
+  local name=$1
+  shift
+  echo "==> $name"
+  if "$@"; then
+    echo "ok $name"
+  else
+    echo "FAIL $name"
+    failed=1
+  fi
+}
+
+run "model" node tests/test_model.js
+run "manifest" python3 tests/test_manifest.py
+run "contacts" python3 tests/test_contacts.py
+run "messages" python3 tests/test_messages.py
+
+if command -v omarchy >/dev/null 2>&1; then
+  run "plugin-validate" omarchy plugin validate "$ROOT"
+else
+  echo "skip plugin-validate (omarchy not on PATH)"
+fi
+
+OMARCHY_PATH=${OMARCHY_PATH:-/usr/share/omarchy}
+if command -v qmllint >/dev/null 2>&1 && [[ -d $OMARCHY_PATH/shell ]]; then
+  run "qmllint" qmllint -I "$OMARCHY_PATH/shell" \
+    Panel.qml Service.qml SmsView.qml ConnectIcon.qml
+else
+  echo "skip qmllint"
+fi
+
+if (( failed )); then
+  echo "tests failed"
+  exit 1
+fi
+echo "all ok"

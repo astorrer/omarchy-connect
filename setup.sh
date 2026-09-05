@@ -1,7 +1,33 @@
 #!/bin/bash
 # Install kdeconnect, open the discovery ports, start the daemon, and autostart it.
+# `setup.sh uninstall` only undoes Connect-owned files. It does not remove kdeconnect.
 
 set -euo pipefail
+
+AUTOSTART="$HOME/.config/autostart/kdeconnectd.desktop"
+AUTOSTART_MARK="Phone connect daemon for Connect"
+
+uninstall() {
+  if [[ -f $AUTOSTART ]] && grep -q "$AUTOSTART_MARK" "$AUTOSTART"; then
+    rm -f "$AUTOSTART"
+    echo "Removed $AUTOSTART"
+  else
+    echo "No Connect autostart entry found."
+  fi
+  echo
+  echo "Left in place (shared, or yours to decide):"
+  echo "  - the kdeconnect package"
+  echo "  - ufw rules for 1714-1764, if they were added"
+  echo "  - ~/.local/share/kpeoplevcard/kdeconnect-* (synced contacts)"
+  echo
+  echo "Remove the plugin with:"
+  echo "  omarchy plugin remove io.github.astorrer.connect"
+}
+
+if [[ ${1:-} == uninstall ]]; then
+  uninstall
+  exit 0
+fi
 
 echo "Installing KDE Connect..."
 omarchy-pkg-add kdeconnect
@@ -28,11 +54,11 @@ else
 fi
 
 mkdir -p "$HOME/.config/autostart"
-cat > "$HOME/.config/autostart/kdeconnectd.desktop" <<EOF
+cat > "$AUTOSTART" <<EOF
 [Desktop Entry]
 Type=Application
 Name=KDE Connect
-Comment=Phone connect daemon for Connect
+Comment=$AUTOSTART_MARK
 Exec=$DAEMON
 Terminal=false
 X-GNOME-Autostart-enabled=true
@@ -44,4 +70,4 @@ if ! pgrep -u "$USER" -x kdeconnectd >/dev/null; then
 fi
 
 echo
-echo "Connect is ready. Open KDE Connect on your phone, on the same Wi-Fi, and pair from the bar."
+echo "Connect is ready. Open KDE Connect on the phone, on the same Wi-Fi, and pair from the bar."

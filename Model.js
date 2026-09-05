@@ -77,11 +77,12 @@ function actionRows(device) {
 function conversationTitle(conversation) {
   if (!conversation) return "Unknown"
   if (conversation.title) return String(conversation.title)
+  var names = conversation.names
+  if (names && typeof names.length === "number" && names.length > 0) return names.join(", ")
   var addresses = conversation.addresses
   if (!addresses || typeof addresses.length !== "number") addresses = []
   if (addresses.length === 0) return "Unknown"
-  if (addresses.length === 1) return String(addresses[0])
-  return String(addresses[0]) + " +" + (addresses.length - 1)
+  return addresses.map(String).join(", ")
 }
 
 function previewText(conversation) {

@@ -2,5 +2,7 @@ __pycache__/
 *.pyc
 *.qmlc
 .qmlcache/
+.pytest_cache/
 *.swp
 .DS_Store
+
