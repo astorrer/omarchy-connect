@@ -222,12 +222,22 @@ Panel {
     }
     if (view === "sms") {
       if (dx !== 0 && dy === 0) {
+        if (smsView.page === "inbox" && smsView.listIndex <= 1) {
+          if (smsView.listIndex === 0 && dx < 0) {
+            goBack()
+            return
+          }
+          smsView.cursorActive = true
+          smsView.moveList(dx, 0)
+          scrollCursorIntoView()
+          return
+        }
         if (dx > 0) activateCursor()
         else goBack()
         return
       }
       smsView.cursorActive = true
-      smsView.moveList(dy)
+      smsView.moveList(0, dy)
       scrollCursorIntoView()
       return
     }

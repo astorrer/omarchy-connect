@@ -140,15 +140,15 @@ ColumnLayout {
     return backButton
   }
 
-  function moveList(dy) {
-    if (dy === 0) return
+  function moveList(dx, dy) {
     cursorActive = true
     if (page === "compose") {
       if (dy > 0) draftField.forceActiveFocus()
-      else toField.forceActiveFocus()
+      else if (dy < 0) toField.forceActiveFocus()
       return
     }
     if (page === "thread") {
+      if (dx !== 0 || dy === 0) return
       if (dy < 0 && listIndex === 0) {
         loadOlder()
         return
@@ -165,7 +165,19 @@ ColumnLayout {
       }
       return
     }
-    listIndex = Math.max(0, Math.min(inboxMax(), listIndex + dy))
+    if (dx !== 0 && dy === 0) {
+      if (listIndex === 0 && dx > 0) listIndex = 1
+      else if (listIndex === 1 && dx < 0) listIndex = 0
+      return
+    }
+    if (dy === 0) return
+    if (listIndex <= 1) {
+      if (dy > 0 && conversations.length > 0) listIndex = 2
+      return
+    }
+    var next = listIndex + dy
+    if (next < 2) listIndex = 0
+    else listIndex = Math.min(inboxMax(), next)
   }
 
   function activateList() {
@@ -315,32 +327,36 @@ ColumnLayout {
         width: parent.width
         spacing: Style.space(6)
 
-        Button {
-          id: newRow
+        Row {
+          id: inboxTools
           width: parent.width
-          leftAlign: true
-          text: "New message"
-          iconText: "󰍩"
-          bordered: true
-          foreground: root.foreground
-          fontFamily: root.fontFamily
-          hasCursor: root.cursorActive && root.page === "inbox" && root.listIndex === 0
-          onClicked: root.openCompose()
-          onHovered: function(on) { if (on) { root.cursorActive = true; root.listIndex = 0 } }
-        }
+          spacing: Style.space(6)
 
-        Button {
-          id: appRow
-          width: parent.width
-          leftAlign: true
-          text: "Open SMS app"
-          iconText: "󰏌"
-          bordered: true
-          foreground: root.foreground
-          fontFamily: root.fontFamily
-          hasCursor: root.cursorActive && root.page === "inbox" && root.listIndex === 1
-          onClicked: if (root.service) root.service.smsApp(root.deviceId)
-          onHovered: function(on) { if (on) { root.cursorActive = true; root.listIndex = 1 } }
+          Button {
+            id: newRow
+            width: (inboxTools.width - inboxTools.spacing) / 2
+            text: "New message"
+            iconText: "󰍩"
+            bordered: true
+            foreground: root.foreground
+            fontFamily: root.fontFamily
+            hasCursor: root.cursorActive && root.page === "inbox" && root.listIndex === 0
+            onClicked: root.openCompose()
+            onHovered: function(on) { if (on) { root.cursorActive = true; root.listIndex = 0 } }
+          }
+
+          Button {
+            id: appRow
+            width: (inboxTools.width - inboxTools.spacing) / 2
+            text: "SMS app"
+            iconText: "󰏌"
+            bordered: true
+            foreground: root.foreground
+            fontFamily: root.fontFamily
+            hasCursor: root.cursorActive && root.page === "inbox" && root.listIndex === 1
+            onClicked: if (root.service) root.service.smsApp(root.deviceId)
+            onHovered: function(on) { if (on) { root.cursorActive = true; root.listIndex = 1 } }
+          }
         }
 
         PanelSeparator {

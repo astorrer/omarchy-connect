@@ -1,5 +1,9 @@
 # Changelog
 
+## 1.2.15
+
+New message and SMS app sit side by side in the inbox. Left and right walk those two; down enters the list.
+
 ## 1.2.14
 
 Clicking the phone opens the KDE Connect app.
