@@ -35,9 +35,9 @@ The version in the footer opens the project page.
 Open from the gear in the panel:
 
 - Refresh interval
-- Hide the icon when no phone is reachable
-- Badge the bar when the phone has notifications
-- Hide SMS from the notification list (on by default)
+- Hide if away
+- Bar badge
+- Hide SMS (on by default)
 
 ## Remove
 

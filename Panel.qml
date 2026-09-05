@@ -821,7 +821,7 @@ Panel {
             Toggle {
               id: badgeRow
               width: parent.width
-              label: "Badge the bar for notifications"
+              label: "Bar badge"
               checked: root.badgeNotifications
               foreground: root.foreground
               fontFamily: root.fontFamily
@@ -838,7 +838,7 @@ Panel {
             Toggle {
               id: hideRow
               width: parent.width
-              label: "Hide when no phone is reachable"
+              label: "Hide if away"
               checked: root.hideWhenDisconnected
               foreground: root.foreground
               fontFamily: root.fontFamily
@@ -855,7 +855,7 @@ Panel {
             Toggle {
               id: hideSmsRow
               width: parent.width
-              label: "Hide SMS from the notification list"
+              label: "Hide SMS"
               checked: root.hideSmsNotifications
               foreground: root.foreground
               fontFamily: root.fontFamily

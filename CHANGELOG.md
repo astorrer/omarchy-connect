@@ -1,5 +1,9 @@
 # Changelog
 
+## 1.2.12
+
+Shorter settings labels so they fit next to the toggle.
+
 ## 1.2.11
 
 Inbox and notification titles sit on the right, across from the back button.
