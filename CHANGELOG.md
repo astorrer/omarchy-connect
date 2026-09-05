@@ -1,5 +1,9 @@
 # Changelog
 
+## 1.2.20
+
+Composing to someone prefers their 1:1 thread over a group they are in. Quality sweep: drop a dead icon helper and keep the SMS-app name lists in lockstep.
+
 ## 1.2.19
 
 Message bubbles are not click targets. Only a copy chip is.

@@ -1,4 +1,4 @@
-var PLUGIN_VERSION = "1.2.19"
+var PLUGIN_VERSION = "1.2.20"
 var PROJECT_URL = "https://github.com/astorrer/omarchy-connect"
 
 function scrollFlickToItem(flick, item, margin) {
@@ -244,18 +244,28 @@ function contactPhones(contact) {
 function findConversationForPhones(conversations, phones) {
   var list = conversations || []
   var nums = phones || []
+  var group = null
   var i
   var a
   var p
+  var hit
   for (i = 0; i < list.length; i++) {
     var addresses = (list[i] && list[i].addresses) || []
+    hit = false
     for (a = 0; a < addresses.length; a++) {
       for (p = 0; p < nums.length; p++) {
-        if (phonesMatch(addresses[a], nums[p])) return list[i]
+        if (phonesMatch(addresses[a], nums[p])) {
+          hit = true
+          break
+        }
       }
+      if (hit) break
     }
+    if (!hit) continue
+    if (addresses.length <= 1) return list[i]
+    if (!group) group = list[i]
   }
-  return null
+  return group
 }
 
 function findConversationForContact(conversations, contact) {
@@ -656,10 +666,4 @@ function visibleNotifications(items, hideSms) {
   return rows
 }
 
-function barIcon(installed, running, device) {
-  if (!installed) return "󰄜"
-  if (!running) return "󰄜"
-  if (device && device.pairRequestedByPeer) return "󰂜"
-  if (device && device.paired && device.reachable) return "󰄜"
-  return "󰄜"
-}
+

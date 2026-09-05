@@ -82,6 +82,13 @@ assert(sandbox.findConversationForContact(
   [{ threadId: 9, addresses: ["+1-801-865-8491"] }],
   { name: "Other", phone: "+15555550100", phones: ["+15555550100"] }
 ) === null, "unknown number has no thread")
+assert(sandbox.findConversationForContact(
+  [
+    { threadId: 1, addresses: ["+18018658491", "+15555550100"] },
+    { threadId: 2, addresses: ["801-865-8491"] }
+  ],
+  { name: "Gabby", phones: ["+18018658491"] }
+).threadId === 2, "compose prefers a 1:1 thread over a group")
 assert(sandbox.conversationTitle({ title: "Ada" }) === "Ada", "explicit title")
 assert(sandbox.conversationTitle({ names: ["Ada", "Bob"] }) === "Ada, Bob", "names title")
 assert(sandbox.conversationTitle({ addresses: ["+1", "+2"] }) === "+1, +2", "group title")

@@ -56,6 +56,16 @@ class ManifestTest(unittest.TestCase):
             self.assertNotIn("import gi", text, name)
             self.assertNotIn("gi.repository", text, name)
 
+    def test_sms_app_names_match_model(self):
+        sys.path.insert(0, str(ROOT))
+        from connectlib.notice import SMS_APP_NAMES
+
+        model = (ROOT / "Model.js").read_text(encoding="utf-8")
+        block = re.search(r"var SMS_APP_NAMES = \{([^}]+)\}", model)
+        self.assertIsNotNone(block)
+        js_names = set(re.findall(r'"([^"]+)"', block.group(1)))
+        self.assertEqual(js_names, set(SMS_APP_NAMES))
+
 
 if __name__ == "__main__":
     unittest.main()

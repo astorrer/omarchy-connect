@@ -84,23 +84,29 @@ ColumnLayout {
     draft = ""
     cursorActive = true
     listIndex = 0
-    if (deviceId !== "") service.loadContacts(deviceId)
+    if (deviceId !== "") {
+      service.loadContacts(deviceId)
+      service.loadConversations(deviceId)
+    }
     Qt.callLater(function() { if (toField) toField.forceActiveFocus() })
+  }
+
+  function openExistingCompose(phones) {
+    var existing = Model.findConversationForPhones(conversations, phones)
+    if (!existing) return false
+    var pending = String(draft || "")
+    openThread(existing)
+    if (pending !== "") {
+      draft = pending
+      if (draftField) draftField.text = pending
+    }
+    Qt.callLater(function() { if (draftField) draftField.forceActiveFocus() })
+    return true
   }
 
   function pickContact(contact) {
     if (!contact) return
-    var existing = Model.findConversationForContact(conversations, contact)
-    if (existing) {
-      var pending = String(draft || "")
-      openThread(existing)
-      if (pending !== "") {
-        draft = pending
-        if (draftField) draftField.text = pending
-      }
-      Qt.callLater(function() { if (draftField) draftField.forceActiveFocus() })
-      return
-    }
+    if (openExistingCompose(Model.contactPhones(contact))) return
     composeName = Model.contactLabel(contact)
     composeNumber = String(contact.phone || "")
     composeTo = composeName || composeNumber
@@ -294,6 +300,13 @@ ColumnLayout {
 
   Connections {
     target: root.service
+    function onConversationsChanged() {
+      if (root.page !== "compose") return
+      var phones = []
+      if (root.composeNumber) phones.push(root.composeNumber)
+      if (Model.looksLikePhone(root.composeTo)) phones.push(root.composeTo)
+      if (phones.length) root.openExistingCompose(phones)
+    }
     function onMessagesChanged() {
       if (root.page !== "thread") return
       if (root.pinToNewest) {
