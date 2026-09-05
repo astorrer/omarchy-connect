@@ -101,4 +101,15 @@ assert(sandbox.notificationCopySnippets({ title: "123456", text: "is your Google
 assert(sandbox.messageCopySnippets({ body: "Your OTP is 246810" })[0].value === "246810", "message snippets read body")
 assert(sandbox.copySnippets("Your code is 123456. Order 998877.")[0].value === "123456", "prefers the code nearest the cue")
 
+const oldOk = { id: 1, body: "ok", fromMe: true, date: 10 }
+const pendingOk = { id: -99, body: "ok", fromMe: true, date: 20, pending: true }
+let merged = sandbox.mergeSmsMessages([oldOk, pendingOk], [oldOk])
+assert(merged.some(function(m) { return m.pending }), "pending kept when only an older same body exists")
+const echoOk = { id: 2, body: "ok", fromMe: true, date: 21 }
+merged = sandbox.mergeSmsMessages([oldOk, pendingOk], [oldOk, echoOk])
+assert(!merged.some(function(m) { return m.pending }), "pending drops when a new from-me echo arrives")
+assert(merged.some(function(m) { return m.id === 2 }), "echo is kept")
+merged = sandbox.mergeSmsMessages([pendingOk], [{ id: 5, body: "hi", fromMe: false, date: 5 }])
+assert(merged.some(function(m) { return m.pending }), "pending kept without an echo")
+
 console.log("ok")

@@ -1,4 +1,4 @@
-var PLUGIN_VERSION = "1.2.4"
+var PLUGIN_VERSION = "1.2.5"
 var PROJECT_URL = "https://github.com/astorrer/omarchy-connect"
 
 function scrollFlickToItem(flick, item, margin) {
@@ -249,6 +249,43 @@ function messageAttachments(message) {
   var atts = message && message.attachments
   if (atts && typeof atts.length === "number") return atts
   return []
+}
+
+function mergeSmsMessages(existing, incoming) {
+  var current = existing || []
+  var next = incoming || []
+  var byId = {}
+  var knownIds = {}
+  var claimed = {}
+  var i
+  var j
+  for (i = 0; i < current.length; i++) {
+    if (current[i] && current[i].pending) continue
+    knownIds[String(current[i].id)] = true
+    byId[String(current[i].id)] = current[i]
+  }
+  for (i = 0; i < next.length; i++) byId[String(next[i].id)] = next[i]
+  for (i = 0; i < current.length; i++) {
+    var pending = current[i]
+    if (!pending || !pending.pending) continue
+    var body = String(pending.body || "").trim()
+    var matched = false
+    for (j = 0; j < next.length; j++) {
+      var real = next[j]
+      if (!real || !real.fromMe) continue
+      if (String(real.body || "").trim() !== body) continue
+      if (knownIds[String(real.id)]) continue
+      if (claimed[String(real.id)]) continue
+      claimed[String(real.id)] = true
+      matched = true
+      break
+    }
+    if (!matched) byId[String(pending.id)] = pending
+  }
+  var rows = []
+  for (var key in byId) rows.push(byId[key])
+  rows.sort(function(a, b) { return (a.date || 0) - (b.date || 0) })
+  return rows
 }
 
 var COPY_CUE_RE = /\b(codes?|otp|pin|passcodes?|passwords?|verif(?:y|ication)|authenticators?|2fa|two[\s-]?factor|one[\s-]?time|security[ -]?codes?|login[ -]?codes?|confirmation|auth(?:entication)?[ -]?codes?)\b/i

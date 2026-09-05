@@ -1,5 +1,6 @@
 #!/usr/bin/python3
 import json
+import re
 import sys
 import unittest
 from pathlib import Path
@@ -42,6 +43,18 @@ class ManifestTest(unittest.TestCase):
             if any(part in skip for part in path.parts):
                 continue
             self.assertFalse(path.is_symlink(), f"symlink not allowed: {path}")
+
+    def test_footer_version_matches_manifest(self):
+        model = (ROOT / "Model.js").read_text(encoding="utf-8")
+        match = re.search(r'PLUGIN_VERSION = "([^"]+)"', model)
+        self.assertIsNotNone(match, "PLUGIN_VERSION missing from Model.js")
+        self.assertEqual(match.group(1), self.manifest["version"])
+
+    def test_stdlib_modules_have_no_gi(self):
+        for name in ("contacts.py", "messages.py", "notice.py", "util.py"):
+            text = (ROOT / "connectlib" / name).read_text(encoding="utf-8")
+            self.assertNotIn("import gi", text, name)
+            self.assertNotIn("gi.repository", text, name)
 
 
 if __name__ == "__main__":

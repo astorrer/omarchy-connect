@@ -137,6 +137,7 @@ ColumnLayout {
     if (!service || !deviceId || !current || text === "") return
     service.replyNotification(deviceId, current.id, text)
     draft = ""
+    if (draftField) draftField.text = ""
     openList()
   }
 
@@ -307,33 +308,15 @@ ColumnLayout {
             }
             Repeater {
               model: notifRow.snips
-              BorderSurface {
+              CopyChip {
                 required property var modelData
+                snippet: modelData
                 Layout.fillWidth: true
-                implicitHeight: notifSnipLabel.implicitHeight + Style.space(10)
-                radius: Style.cornerRadius
-                color: Style.hoverFillFor(root.foreground, Color.accent)
-                borderSpec: Border.controlSpec("normal", root.foreground, Color.accent)
-                MouseArea {
-                  anchors.fill: parent
-                  z: 2
-                  hoverEnabled: true
-                  preventStealing: true
-                  cursorShape: Qt.PointingHandCursor
-                  onClicked: root.copySnippet(modelData)
-                }
-                Text {
-                  id: notifSnipLabel
-                  anchors.left: parent.left
-                  anchors.right: parent.right
-                  anchors.verticalCenter: parent.verticalCenter
-                  anchors.margins: Style.space(6)
-                  textFormat: Text.PlainText
-                  text: "󰆏  " + String((modelData && modelData.label) || "Copy")
-                  color: root.foreground
-                  font.family: root.fontFamily
-                  font.pixelSize: Style.font.caption
-                  elide: Text.ElideMiddle
+                foreground: root.foreground
+                fontFamily: root.fontFamily
+                onActivated: {
+                  root.listIndex = notifRow.index
+                  root.copySnippet(modelData)
                 }
               }
             }
@@ -386,32 +369,13 @@ ColumnLayout {
 
     Repeater {
       model: Model.notificationCopySnippets(root.current)
-      BorderSurface {
+      CopyChip {
         required property var modelData
+        snippet: modelData
         width: parent.width
-        implicitHeight: replySnipLabel.implicitHeight + Style.space(10)
-        radius: Style.cornerRadius
-        color: Style.hoverFillFor(root.foreground, Color.accent)
-        borderSpec: Border.controlSpec("normal", root.foreground, Color.accent)
-        MouseArea {
-          anchors.fill: parent
-          hoverEnabled: true
-          cursorShape: Qt.PointingHandCursor
-          onClicked: root.copySnippet(modelData)
-        }
-        Text {
-          id: replySnipLabel
-          anchors.left: parent.left
-          anchors.right: parent.right
-          anchors.verticalCenter: parent.verticalCenter
-          anchors.margins: Style.space(6)
-          textFormat: Text.PlainText
-          text: "󰆏  " + String((modelData && modelData.label) || "Copy")
-          color: root.foreground
-          font.family: root.fontFamily
-          font.pixelSize: Style.font.caption
-          elide: Text.ElideMiddle
-        }
+        foreground: root.foreground
+        fontFamily: root.fontFamily
+        onActivated: root.copySnippet(modelData)
       }
     }
 
@@ -424,7 +388,7 @@ ColumnLayout {
         foreground: root.foreground
         placeholderText: "Reply"
         text: root.draft
-        onTextChanged: root.draft = text
+        onTextChanged: if (text !== root.draft) root.draft = text
         onAccepted: root.sendDraft()
         Keys.onPressed: function(event) {
           if (event.key === Qt.Key_Escape) {

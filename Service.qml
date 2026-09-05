@@ -17,6 +17,7 @@ Item {
   property var messages: []
   property var notifications: []
   property var _smsQueue: []
+  property var _actionQueue: []
   property bool smsLoading: false
   property bool smsHasMore: true
   property string smsDeviceId: ""
@@ -29,13 +30,11 @@ Item {
   property int _desired: -1
   readonly property bool active: _desired === -1 ? running : (_desired === 1)
   readonly property var primary: Model.primaryDevice(devices)
-  readonly property bool busy: statusProcess.running || actionProcess.running || setupProcess.running || pickerProcess.running || smsProcess.running
+  readonly property bool busy: statusProcess.running || actionProcess.running || pickerProcess.running || smsProcess.running || settleTimer.running
   readonly property int refreshIntervalSec: intSetting("refreshIntervalSec", 8, 3, 120)
   readonly property string helperPath: decodeURIComponent(Qt.resolvedUrl("connect.py").toString().replace(/^file:\/\//, ""))
   readonly property string setupPath: decodeURIComponent(Qt.resolvedUrl("setup.sh").toString().replace(/^file:\/\//, ""))
 
-  property string _statusOutput: ""
-  property string _pendingAction: ""
   property bool _reloadNotifications: false
   property string _notifyDeviceId: ""
   property bool _reloadThread: false
@@ -81,8 +80,14 @@ Item {
   }
 
   function runAction(args, label) {
-    if (actionProcess.running) return
-    _pendingAction = label || ""
+    if (actionProcess.running) {
+      _actionQueue.push({ args: args, label: label || "" })
+      if (label) {
+        actionStatus = label
+        actionStatusTimer.restart()
+      }
+      return
+    }
     if (label) {
       actionStatus = label
       actionStatusTimer.restart()
@@ -117,7 +122,7 @@ Item {
   function copyToClipboard(text, hint) {
     var value = String(text || "")
     if (value === "") return
-    Quickshell.execDetached(["bash", "-c", "printf %s " + Util.shellQuote(value) + " | wl-copy"])
+    Quickshell.execDetached(["wl-copy", "--", value])
     actionStatus = hint || "Copied"
     actionStatusTimer.restart()
   }
@@ -142,35 +147,7 @@ Item {
   }
 
   function mergeMessages(incoming) {
-    var byId = {}
-    var claimed = {}
-    var i
-    var j
-    for (i = 0; i < messages.length; i++) {
-      if (messages[i] && messages[i].pending) continue
-      byId[String(messages[i].id)] = messages[i]
-    }
-    for (i = 0; i < incoming.length; i++) byId[String(incoming[i].id)] = incoming[i]
-    for (i = 0; i < messages.length; i++) {
-      var pending = messages[i]
-      if (!pending || !pending.pending) continue
-      var body = String(pending.body || "").trim()
-      var matched = false
-      for (j = 0; j < incoming.length; j++) {
-        var real = incoming[j]
-        if (!real || !real.fromMe) continue
-        if (String(real.body || "").trim() !== body) continue
-        if (claimed[String(real.id)]) continue
-        claimed[String(real.id)] = true
-        matched = true
-        break
-      }
-      if (!matched) byId[String(pending.id)] = pending
-    }
-    var rows = []
-    for (var key in byId) rows.push(byId[key])
-    rows.sort(function(a, b) { return (a.date || 0) - (b.date || 0) })
-    messages = rows
+    messages = Model.mergeSmsMessages(messages, incoming)
   }
 
   function appendOutgoing(text) {
@@ -278,11 +255,12 @@ Item {
   }
 
   function setup() {
-    if (setupProcess.running) return
+    if (settleTimer.running) return
     actionStatus = "Opening installer…"
     actionStatusTimer.restart()
     Quickshell.execDetached(["omarchy-launch-floating-terminal-with-presentation", setupPath])
-    settleTimer.restart()
+    settleTimer.ticks = 0
+    settleTimer.running = true
   }
 
   Timer {
@@ -369,6 +347,10 @@ Item {
         root._reloadThread = false
         threadRefreshTimer.restart()
       }
+      if (root._actionQueue.length > 0) {
+        var queued = root._actionQueue.shift()
+        root.runAction(queued.args, queued.label)
+      }
     }
   }
 
@@ -386,12 +368,6 @@ Item {
         if (path !== "") root.runAction(["share-file", pickerProcess._deviceId, path], "Sending file…")
       }
     }
-  }
-
-  Process {
-    id: setupProcess
-    running: false
-    command: []
   }
 
   Process {

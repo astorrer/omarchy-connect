@@ -203,6 +203,7 @@ ColumnLayout {
       pinToNewest = true
       service.smsReply(deviceId, thread.threadId, text)
       draft = ""
+      if (draftField) draftField.text = ""
       listIndex = (service.messages || []).length
       scrollToNewest()
       return
@@ -211,6 +212,7 @@ ColumnLayout {
     if (number === "") return
     service.smsSend(deviceId, number, text)
     draft = ""
+    if (draftField) draftField.text = ""
     openInbox()
   }
 
@@ -577,33 +579,15 @@ ColumnLayout {
                   spacing: Style.space(4)
                   Repeater {
                     model: msgRow.snips
-                    BorderSurface {
+                    CopyChip {
                       required property var modelData
+                      snippet: modelData
                       width: snipCol.width
-                      implicitHeight: snipLabel.implicitHeight + Style.space(10)
-                      radius: Style.cornerRadius
-                      color: Style.hoverFillFor(root.foreground, Color.accent)
-                      borderSpec: Border.controlSpec("normal", root.foreground, Color.accent)
-                      MouseArea {
-                        anchors.fill: parent
-                        z: 2
-                        hoverEnabled: true
-                        preventStealing: true
-                        cursorShape: Qt.PointingHandCursor
-                        onClicked: root.copySnippet(modelData)
-                      }
-                      Text {
-                        id: snipLabel
-                        anchors.left: parent.left
-                        anchors.right: parent.right
-                        anchors.verticalCenter: parent.verticalCenter
-                        anchors.margins: Style.space(6)
-                        textFormat: Text.PlainText
-                        text: "󰆏  " + String((modelData && modelData.label) || "Copy")
-                        color: root.foreground
-                        font.family: root.fontFamily
-                        font.pixelSize: Style.font.caption
-                        elide: Text.ElideMiddle
+                      foreground: root.foreground
+                      fontFamily: root.fontFamily
+                      onActivated: {
+                        root.listIndex = msgRow.index
+                        root.copySnippet(modelData)
                       }
                     }
                   }
@@ -638,7 +622,7 @@ ColumnLayout {
       foreground: root.foreground
       placeholderText: "Phone number"
       text: root.composeTo
-      onTextChanged: root.composeTo = text
+      onTextChanged: if (text !== root.composeTo) root.composeTo = text
       onAccepted: draftField.forceActiveFocus()
       Keys.onPressed: function(event) {
         if (event.key === Qt.Key_Escape) {
@@ -660,7 +644,7 @@ ColumnLayout {
         foreground: root.foreground
         placeholderText: "Message"
         text: root.draft
-        onTextChanged: root.draft = text
+        onTextChanged: if (text !== root.draft) root.draft = text
         onAccepted: root.sendDraft()
         hasCursor: root.page === "thread" && root.listIndex === root.messages.length
         Keys.onPressed: function(event) {

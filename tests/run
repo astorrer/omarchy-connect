@@ -33,7 +33,7 @@ fi
 OMARCHY_PATH=${OMARCHY_PATH:-/usr/share/omarchy}
 if command -v qmllint >/dev/null 2>&1 && [[ -d $OMARCHY_PATH/shell ]]; then
   run "qmllint" qmllint -I "$OMARCHY_PATH/shell" \
-    Panel.qml Service.qml SmsView.qml NotificationsView.qml ConnectIcon.qml
+    Panel.qml Service.qml SmsView.qml NotificationsView.qml CopyChip.qml ConnectIcon.qml
 else
   echo "skip qmllint"
 fi

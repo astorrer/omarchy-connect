@@ -1,5 +1,9 @@
 # Changelog
 
+## 1.2.5
+
+Sending the same text twice no longer knocks the first optimistic line off the thread. Copy chips share one component. A ping or file share in flight no longer drops the next action.
+
 ## 1.2.4
 
 Copy a 2FA code or an http(s) link from a message or notification. Click the chip, or press `y`. Links are copied, not opened. The rest of the message stays put.
