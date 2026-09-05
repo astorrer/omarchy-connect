@@ -1,5 +1,9 @@
 # Changelog
 
+## 1.2.9
+
+Settings toggles flip when you click the row. The switch no longer fights the highlight for the click.
+
 ## 1.2.8
 
 SMS is hidden from the notification list by default. It still lives in Messages. A setting brings those rows back.

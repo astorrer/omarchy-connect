@@ -818,31 +818,55 @@ Panel {
               fontFamily: root.fontFamily
             }
 
-            SettingToggle {
+            Toggle {
               id: badgeRow
               width: parent.width
               label: "Badge the bar for notifications"
               checked: root.badgeNotifications
-              rowIndex: 0
+              foreground: root.foreground
+              fontFamily: root.fontFamily
+              hasCursor: root.cursorActive && root.focusSection === "settings" && root.settingIndex === 0
               onClicked: root.persistSettings({ badgeNotifications: !root.badgeNotifications })
+              onHovered: function(on) {
+                if (!on) return
+                root.cursorActive = true
+                root.focusSection = "settings"
+                root.settingIndex = 0
+              }
             }
 
-            SettingToggle {
+            Toggle {
               id: hideRow
               width: parent.width
               label: "Hide when no phone is reachable"
               checked: root.hideWhenDisconnected
-              rowIndex: 1
+              foreground: root.foreground
+              fontFamily: root.fontFamily
+              hasCursor: root.cursorActive && root.focusSection === "settings" && root.settingIndex === 1
               onClicked: root.persistSettings({ hideWhenDisconnected: !root.hideWhenDisconnected })
+              onHovered: function(on) {
+                if (!on) return
+                root.cursorActive = true
+                root.focusSection = "settings"
+                root.settingIndex = 1
+              }
             }
 
-            SettingToggle {
+            Toggle {
               id: hideSmsRow
               width: parent.width
               label: "Hide SMS from the notification list"
               checked: root.hideSmsNotifications
-              rowIndex: 2
+              foreground: root.foreground
+              fontFamily: root.fontFamily
+              hasCursor: root.cursorActive && root.focusSection === "settings" && root.settingIndex === 2
               onClicked: root.persistSettings({ hideSmsNotifications: !root.hideSmsNotifications })
+              onHovered: function(on) {
+                if (!on) return
+                root.cursorActive = true
+                root.focusSection = "settings"
+                root.settingIndex = 2
+              }
             }
 
             CursorSurface {
@@ -1058,50 +1082,6 @@ Panel {
           elide: Text.ElideRight
           Layout.fillWidth: true
         }
-      }
-    }
-  }
-
-  component SettingToggle: CursorSurface {
-    id: settingRow
-    property string label: ""
-    property bool checked: false
-    property int rowIndex: 0
-    signal clicked()
-    hasCursor: root.cursorActive && root.focusSection === "settings" && root.settingIndex === rowIndex
-    foreground: root.foreground
-    implicitHeight: settingInner.implicitHeight + Style.spacing.rowPaddingX
-    MouseArea {
-      anchors.fill: parent
-      hoverEnabled: true
-      cursorShape: Qt.PointingHandCursor
-      onEntered: {
-        root.cursorActive = true
-        root.focusSection = "settings"
-        root.settingIndex = settingRow.rowIndex
-      }
-      onClicked: settingRow.clicked()
-    }
-    RowLayout {
-      id: settingInner
-      anchors.left: parent.left
-      anchors.right: parent.right
-      anchors.verticalCenter: parent.verticalCenter
-      anchors.leftMargin: Style.space(10)
-      anchors.rightMargin: Style.space(10)
-      spacing: Style.space(8)
-      Text {
-        text: settingRow.label
-        color: root.foreground
-        font.family: root.fontFamily
-        font.pixelSize: Style.font.body
-        wrapMode: Text.WordWrap
-        Layout.fillWidth: true
-      }
-      ToggleSwitch {
-        checked: settingRow.checked
-        foreground: root.foreground
-        hasCursor: settingRow.hasCursor
       }
     }
   }
