@@ -2,7 +2,7 @@
   "schemaVersion": 1,
   "id": "io.github.astorrer.connect",
   "name": "Connect",
-  "version": "1.2.13",
+  "version": "1.2.14",
   "author": "Aaron Storrer",
   "license": "MIT",
   "description": "Phone connect for the Omarchy bar. Pair a phone over the KDE Connect protocol, then ping, ring, share files, send the clipboard, read notifications, and read or send SMS.",

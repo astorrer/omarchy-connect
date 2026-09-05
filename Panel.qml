@@ -307,10 +307,7 @@ Panel {
       return
     }
     if (focusSection === "devices") {
-      if (actions.length > 0) {
-        actionIndex = 0
-        runAction(actions[0])
-      }
+      connect.openKdeConnect()
       return
     }
     if (focusSection === "actions") runAction(actions[actionIndex])
@@ -1045,7 +1042,10 @@ Panel {
       hoverEnabled: true
       cursorShape: Qt.PointingHandCursor
       onEntered: root.setDeviceCursor(deviceRow.rowIndex)
-      onClicked: root.setDeviceCursor(deviceRow.rowIndex)
+      onClicked: {
+        root.setDeviceCursor(deviceRow.rowIndex)
+        connect.openKdeConnect()
+      }
     }
 
     RowLayout {

@@ -119,6 +119,12 @@ Item {
   function reject(id) { runAction(["reject", id], "Declining…") }
   function sendClipboard(id) { runAction(["send-clipboard", id], "Sending clipboard…") }
 
+  function openKdeConnect() {
+    actionStatus = "Opening KDE Connect…"
+    actionStatusTimer.restart()
+    Quickshell.execDetached(["uwsm-app", "--", "kdeconnect-app"])
+  }
+
   function copyToClipboard(text, hint) {
     var value = String(text || "")
     if (value === "") return
