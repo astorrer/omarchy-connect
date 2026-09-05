@@ -82,6 +82,20 @@ Column {
     return messages.length
   }
 
+  function currentItem() {
+    if (page === "inbox") {
+      if (listIndex === 0) return newRow
+      if (listIndex === 1) return appRow
+      if (convRepeater) return convRepeater.itemAt(listIndex - 2)
+    }
+    if (page === "thread") {
+      if (listIndex < messages.length && msgRepeater) return msgRepeater.itemAt(listIndex)
+      return draftField
+    }
+    if (page === "compose") return toField.activeFocus ? toField : draftField
+    return backButton
+  }
+
   function moveList(dy) {
     if (dy === 0) return
     cursorActive = true
@@ -229,6 +243,7 @@ Column {
     }
 
     CursorSurface {
+      id: appRow
       width: parent.width
       hasCursor: root.cursorActive && root.page === "inbox" && root.listIndex === 1
       foreground: root.foreground
@@ -262,6 +277,7 @@ Column {
     }
 
     Repeater {
+      id: convRepeater
       model: root.conversations
       CursorSurface {
         id: convRow
@@ -353,6 +369,7 @@ Column {
     }
 
     Repeater {
+      id: msgRepeater
       model: root.service ? root.service.messages : []
       CursorSurface {
         id: msgRow

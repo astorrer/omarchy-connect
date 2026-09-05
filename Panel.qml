@@ -95,11 +95,62 @@ Panel {
     focusSection = "header"
   }
 
+  function goBack() {
+    if (view === "sms") {
+      if (smsView.page !== "inbox") smsView.openInbox()
+      else {
+        view = "main"
+        smsDevice = null
+        armCursor()
+        Qt.callLater(function() { if (keyCatcher) keyCatcher.forceActiveFocus() })
+      }
+      return
+    }
+    close()
+  }
+
+  function scrollItemIntoView(item) {
+    if (!panelFlick || !item) return
+    Qt.callLater(function() {
+      if (!panelFlick || !item) return
+      var margin = Style.space(8)
+      var point = item.mapToItem(panelFlick.contentItem, 0, 0)
+      var top = point.y
+      var bottom = top + Math.max(item.height, item.implicitHeight)
+      var viewTop = panelFlick.contentY
+      var viewBottom = viewTop + panelFlick.height
+      var maxY = Math.max(0, panelFlick.contentHeight - panelFlick.height)
+      if (top < viewTop + margin) panelFlick.contentY = Math.max(0, top - margin)
+      else if (bottom > viewBottom - margin) panelFlick.contentY = Math.min(maxY, bottom + margin - panelFlick.height)
+    })
+  }
+
+  function currentItem() {
+    if (view === "sms") return smsView.currentItem()
+    if (focusSection === "setup") return setupButton
+    if (focusSection === "header") return header
+    if (focusSection === "devices" && deviceRepeater) return deviceRepeater.itemAt(deviceIndex)
+    if (focusSection === "actions" && actionRepeater) return actionRepeater.itemAt(actionIndex)
+    return null
+  }
+
+  function scrollCursorIntoView() {
+    if (view === "sms" && smsView.page === "thread" && smsView.pinToNewest && smsView.listIndex >= (connect.messages || []).length)
+      return
+    scrollItemIntoView(currentItem())
+  }
+
   function moveCursor(dx, dy) {
     cursorActive = true
+    if (dx !== 0 && dy === 0) {
+      if (dx > 0) activateCursor()
+      else goBack()
+      return
+    }
     if (view === "sms") {
       smsView.cursorActive = true
       smsView.moveList(dy)
+      scrollCursorIntoView()
       return
     }
     ensureCursor()
@@ -107,28 +158,23 @@ Panel {
     if (focusSection === "setup") return
     if (focusSection === "header") {
       if (dy > 0 && connect.devices.length > 0) focusSection = "devices"
-      return
-    }
-    if (focusSection === "devices") {
+    } else if (focusSection === "devices") {
       if (dy < 0 && deviceIndex === 0) {
         focusSection = "header"
-        return
-      }
-      if (dy > 0 && deviceIndex === connect.devices.length - 1 && actions.length > 0) {
+      } else if (dy > 0 && deviceIndex === connect.devices.length - 1 && actions.length > 0) {
         focusSection = "actions"
         actionIndex = 0
-        return
+      } else {
+        deviceIndex = Math.max(0, Math.min(connect.devices.length - 1, deviceIndex + dy))
       }
-      deviceIndex = Math.max(0, Math.min(connect.devices.length - 1, deviceIndex + dy))
-      return
-    }
-    if (focusSection === "actions") {
+    } else if (focusSection === "actions") {
       if (dy < 0 && actionIndex === 0) {
         focusSection = "devices"
-        return
+      } else {
+        actionIndex = Math.max(0, Math.min(actions.length - 1, actionIndex + dy))
       }
-      actionIndex = Math.max(0, Math.min(actions.length - 1, actionIndex + dy))
     }
+    scrollCursorIntoView()
   }
 
   function activateCursor() {
@@ -263,19 +309,7 @@ Panel {
       }
       blocked: smsView.editorFocused
       onActivateRequested: root.activateCursor()
-      onCloseRequested: {
-        if (root.view === "sms") {
-          if (smsView.page !== "inbox") smsView.openInbox()
-          else {
-            root.view = "main"
-            root.smsDevice = null
-            root.armCursor()
-            Qt.callLater(function() { keyCatcher.forceActiveFocus() })
-          }
-          return
-        }
-        root.close()
-      }
+      onCloseRequested: root.goBack()
       onTabRequested: function(direction) { root.switchPanel(direction) }
       onTextKey: function(t) {
         if (t === "r" || t === "R") connect.refresh()
@@ -366,6 +400,7 @@ Panel {
           }
 
           SetupButton {
+            id: setupButton
             visible: !connect.installed
             width: parent.width
           }
@@ -424,6 +459,7 @@ Panel {
               spacing: Style.space(6)
 
               Repeater {
+                id: deviceRepeater
                 model: connect.devices
                 DeviceRow {
                   required property var modelData
@@ -446,6 +482,7 @@ Panel {
               spacing: Style.space(6)
 
               Repeater {
+                id: actionRepeater
                 model: root.actions
                 ActionRow {
                   required property var modelData

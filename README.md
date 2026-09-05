@@ -26,7 +26,7 @@ Then open **KDE Connect** on the phone, same Wi-Fi, and pair from the panel.
 - Middle click: ping the primary phone
 - In the panel: messages, ping, ring, send clipboard, send file, pair / unpair
 - Messages: inbox, thread, reply, new SMS (`m` from the device list). Threads open on the latest message; scroll up (or Up on the first row) to load older ones from the phone.
-- Keys: arrows / `j` `k` move, Enter activate, Esc back, Tab next panel
+- Keys: up/down or `j` `k` move (list follows the highlight), right/`l` open, left/`h` back, Enter activate, Esc back, Tab next panel
 - Also: `r` refresh, `m` messages, `p` ping, `f` ring, `c` clipboard, `s` send file, `i` install
 
 ## Why not the KDE app
