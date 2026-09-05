@@ -15,6 +15,7 @@ Item {
   property var devices: []
   property var conversations: []
   property var messages: []
+  property var notifications: []
   property var _smsQueue: []
   property bool smsLoading: false
   property bool smsHasMore: true
@@ -35,6 +36,8 @@ Item {
 
   property string _statusOutput: ""
   property string _pendingAction: ""
+  property bool _reloadNotifications: false
+  property string _notifyDeviceId: ""
 
   function setting(name, fallback) {
     var value = settings ? settings[name] : undefined
@@ -170,6 +173,32 @@ Item {
     runAction(["sms-app", id], "Opening messages…")
   }
 
+  function loadNotifications(id) {
+    if (!id) return
+    runSms("notifications", ["notifications", id])
+  }
+
+  function dismissNotification(id, nid) {
+    if (!id || nid === undefined || nid === null || nid === "") return
+    _notifyDeviceId = id
+    _reloadNotifications = true
+    runAction(["notification-dismiss", id, String(nid)], "Dismissing…")
+  }
+
+  function dismissAllNotifications(id) {
+    if (!id) return
+    _notifyDeviceId = id
+    _reloadNotifications = true
+    runAction(["notification-dismiss", id, "--all"], "Dismissing…")
+  }
+
+  function replyNotification(id, nid, text) {
+    if (!id || nid === undefined || nid === null || nid === "") return
+    _notifyDeviceId = id
+    _reloadNotifications = true
+    runAction(["notification-reply", id, String(nid), text], "Sending…")
+  }
+
   function shareFile(id) {
     if (pickerProcess.running || !id) return
     pickerProcess.command = ["omarchy-file-select", "--title", "Send to phone", "--multiple"]
@@ -252,6 +281,10 @@ Item {
         root.lastError = ""
       }
       delayedRefresh.restart()
+      if (root._reloadNotifications && root._notifyDeviceId) {
+        root._reloadNotifications = false
+        root.loadNotifications(root._notifyDeviceId)
+      }
     }
   }
 
@@ -291,6 +324,7 @@ Item {
       } else {
         root.lastError = ""
         if (smsProcess._kind === "conversations") root.conversations = parsed.conversations || []
+        else if (smsProcess._kind === "notifications") root.notifications = parsed.notifications || []
         else if (smsProcess._kind === "thread") root.messages = parsed.messages || []
         else if (smsProcess._kind === "older") {
           var before = root.messages.length

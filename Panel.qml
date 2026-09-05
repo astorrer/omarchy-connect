@@ -106,6 +106,16 @@ Panel {
       }
       return
     }
+    if (view === "notifications") {
+      if (notifyView.page !== "list") notifyView.openList()
+      else {
+        view = "main"
+        smsDevice = null
+        armCursor()
+        Qt.callLater(function() { if (keyCatcher) keyCatcher.forceActiveFocus() })
+      }
+      return
+    }
     close()
   }
 
@@ -127,6 +137,7 @@ Panel {
 
   function currentItem() {
     if (view === "sms") return smsView.currentItem()
+    if (view === "notifications") return notifyView.currentItem()
     if (focusSection === "setup") return setupButton
     if (focusSection === "header") return header
     if (focusSection === "devices" && deviceRepeater) return deviceRepeater.itemAt(deviceIndex)
@@ -150,6 +161,12 @@ Panel {
     if (view === "sms") {
       smsView.cursorActive = true
       smsView.moveList(dy)
+      scrollCursorIntoView()
+      return
+    }
+    if (view === "notifications") {
+      notifyView.cursorActive = true
+      notifyView.moveList(dy)
       scrollCursorIntoView()
       return
     }
@@ -182,6 +199,10 @@ Panel {
       smsView.activateList()
       return
     }
+    if (view === "notifications") {
+      notifyView.activateList()
+      return
+    }
     ensureCursor()
     if (focusSection === "setup") {
       connect.setup()
@@ -205,6 +226,12 @@ Panel {
       smsDevice = selectedDevice
       view = "sms"
       smsView.openInbox()
+      return
+    }
+    if (action.id === "notifications") {
+      smsDevice = selectedDevice
+      view = "notifications"
+      notifyView.openList()
       return
     }
     else if (action.id === "ping") connect.ping(id)
@@ -279,7 +306,7 @@ Panel {
           iconSize: Style.space(12)
           color: root.barIconColor
           dimmed: !root.phoneLive
-          badge: !!(root.primary && root.primary.pairRequestedByPeer)
+          badge: !!(root.primary && (root.primary.pairRequestedByPeer || root.primary.notificationCount > 0))
         }
       }
     }
@@ -307,7 +334,7 @@ Panel {
         root.cursorActive = true
         root.moveCursor(dx, dy)
       }
-      blocked: smsView.editorFocused
+      blocked: smsView.editorFocused || notifyView.editorFocused
       onActivateRequested: root.activateCursor()
       onCloseRequested: root.goBack()
       onTabRequested: function(direction) { root.switchPanel(direction) }
@@ -315,6 +342,12 @@ Panel {
         if (t === "r" || t === "R") connect.refresh()
         else if (t === "m" || t === "M") {
           if (root.selectedDevice) root.runAction({ id: "messages" })
+        }
+        else if (t === "n" || t === "N") {
+          if (root.selectedDevice) root.runAction({ id: "notifications" })
+        }
+        else if (t === "d" || t === "D") {
+          if (root.view === "notifications") notifyView.dismissCurrent()
         }
         else if (t === "p" || t === "P") { if (root.selectedDevice) connect.ping(root.selectedDevice.id) }
         else if (t === "f" || t === "F") { if (root.selectedDevice) connect.ring(root.selectedDevice.id) }
@@ -403,6 +436,25 @@ Panel {
             id: setupButton
             visible: !connect.installed
             width: parent.width
+          }
+
+          NotificationsView {
+            id: notifyView
+            visible: root.view === "notifications"
+            width: parent.width
+            service: connect
+            device: root.smsDevice || root.selectedDevice
+            foreground: root.foreground
+            dim: root.dim
+            fontFamily: root.fontFamily
+            cursorActive: root.cursorActive
+            onBackRequested: {
+              root.view = "main"
+              root.smsDevice = null
+              root.armCursor()
+              Qt.callLater(function() { keyCatcher.forceActiveFocus() })
+            }
+            onReleaseEditor: Qt.callLater(function() { keyCatcher.forceActiveFocus() })
           }
 
           SmsView {

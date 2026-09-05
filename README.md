@@ -4,7 +4,7 @@ Phone connect for the Omarchy bar. Same idea as GSConnect: the KDE Connect proto
 
 The daemon is still `kdeconnectd`. Pairing and crypto stay there. The bar, the panel, install, and autostart are this plugin.
 
-**0.3 freeze:** pairing, ping, ring, clipboard, send file, SMS, and contact names. Notification feed is next; remote input and media are not.
+**0.4:** pairing, ping, ring, clipboard, send file, SMS, contact names, and a notification feed. Remote input and media are not.
 
 ## Install
 
@@ -28,10 +28,11 @@ For SMS names, on the phone: KDE Connect → this computer → **Contacts**. Gra
 - Left click: panel
 - Right click: refresh
 - Middle click: ping the primary phone
-- In the panel: messages, ping, ring, send clipboard, send file, pair / unpair
+- In the panel: notifications, messages, ping, ring, send clipboard, send file, pair / unpair
+- Notifications: current phone notifications (`n`). Enter replies when the phone allows it; `d` dismisses. Desktop popups from KDE Connect still appear; this list is the inbox after they go.
 - Messages: inbox, thread, reply, new SMS (`m` from the device list). Threads open on the latest message; scroll up (or Up on the first row) to load older ones. Names come from synced phone contacts; unknown numbers stay numbers.
 - Keys: up/down or `j` `k` move (list follows the highlight), right/`l` open, left/`h` back, Enter activate, Esc back, Tab next panel
-- Also: `r` refresh, `m` messages, `p` ping, `f` ring, `c` clipboard, `s` send file, `i` install
+- Also: `r` refresh, `n` notifications, `m` messages, `p` ping, `f` ring, `c` clipboard, `s` send file, `i` install
 
 ## Remove
 
@@ -64,9 +65,10 @@ omarchy plugin enable io.github.astorrer.connect --section right
 Layout:
 
 ```
-Panel.qml          bar widget + device list
-SmsView.qml        inbox / thread / compose
-Service.qml        Process queue; calls connect.py
+Panel.qml               bar widget + device list
+NotificationsView.qml   phone notification inbox
+SmsView.qml             inbox / thread / compose
+Service.qml             Process queue; calls connect.py
 connect.py         CLI entry
 connectlib/        dbus, daemon, devices, sms, contacts, messages
 setup.sh           install kdeconnect (uninstall subcommand too)

@@ -22,6 +22,7 @@ run "model" node tests/test_model.js
 run "manifest" python3 tests/test_manifest.py
 run "contacts" python3 tests/test_contacts.py
 run "messages" python3 tests/test_messages.py
+run "notifications" python3 tests/test_notifications.py
 
 if command -v omarchy >/dev/null 2>&1; then
   run "plugin-validate" omarchy plugin validate "$ROOT"

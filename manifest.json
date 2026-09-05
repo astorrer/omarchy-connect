@@ -2,17 +2,17 @@
   "schemaVersion": 1,
   "id": "io.github.astorrer.connect",
   "name": "Connect",
-  "version": "0.3.0",
+  "version": "0.4.0",
   "author": "Aaron Storrer",
   "license": "MIT",
-  "description": "Phone connect for the Omarchy bar. Pair a phone over the KDE Connect protocol, then ping, ring, share files, send the clipboard, and read or send SMS.",
+  "description": "Phone connect for the Omarchy bar. Pair a phone over the KDE Connect protocol, then ping, ring, share files, send the clipboard, read notifications, and read or send SMS.",
   "kinds": ["bar-widget"],
   "entryPoints": {
     "barWidget": "Panel.qml"
   },
   "barWidget": {
     "displayName": "Connect",
-    "description": "Phone battery, pairing, ping, ring, clipboard, file share, and SMS.",
+    "description": "Phone battery, pairing, ping, ring, clipboard, file share, notifications, and SMS.",
     "category": "Network",
     "allowMultiple": false,
     "defaultSection": "right",

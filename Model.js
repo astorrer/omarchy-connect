@@ -63,7 +63,11 @@ function actionRows(device) {
   if (!device.reachable) {
     return [{ id: "unpair", label: "Unpair", icon: "󰌺" }]
   }
+  var notifyLabel = "Notifications"
+  var count = device.notificationCount
+  if (typeof count === "number" && count > 0) notifyLabel = "Notifications (" + count + ")"
   var rows = [
+    { id: "notifications", label: notifyLabel, icon: "󰎕" },
     { id: "messages", label: "Messages", icon: "󰍥" },
     { id: "ping", label: "Ping", icon: "󰐷" },
     { id: "ring", label: "Ring phone", icon: "󰂜" },
@@ -113,6 +117,28 @@ function formatSmsTime(ms) {
     return hours + ":" + (minutes < 10 ? "0" : "") + minutes + " " + suffix
   }
   return (date.getMonth() + 1) + "/" + date.getDate()
+}
+
+function notificationTitle(item) {
+  if (!item) return "Notification"
+  var title = String(item.title || "").trim()
+  if (title) return title
+  var ticker = String(item.ticker || "").trim()
+  if (ticker) return ticker
+  return String(item.appName || "Notification")
+}
+
+function notificationPreview(item) {
+  var text = String((item && item.text) || "").replace(/\s+/g, " ").trim()
+  if (text) return text
+  return String((item && item.ticker) || "").replace(/\s+/g, " ").trim()
+}
+
+function notificationMeta(item) {
+  if (!item) return ""
+  var app = String(item.appName || "").trim()
+  if (item.canReply) return app ? app + " · reply" : "Reply"
+  return app
 }
 
 function barIcon(installed, running, device) {

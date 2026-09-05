@@ -19,6 +19,7 @@ from .devices import (
     cmd_share_text,
     cmd_unpair,
 )
+from .notifications import cmd_notification_dismiss, cmd_notification_reply, cmd_notifications
 from .sms import cmd_conversation, cmd_conversations, cmd_sms_app, cmd_sms_reply, cmd_sms_send
 from .util import fail
 
@@ -40,6 +41,9 @@ COMMANDS = {
     "sms-reply": cmd_sms_reply,
     "sms-send": cmd_sms_send,
     "sms-app": cmd_sms_app,
+    "notifications": cmd_notifications,
+    "notification-dismiss": cmd_notification_dismiss,
+    "notification-reply": cmd_notification_reply,
     "autostart": cmd_autostart,
 }
 

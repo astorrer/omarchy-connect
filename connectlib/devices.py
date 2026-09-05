@@ -117,7 +117,24 @@ def read_device(bus, device_id: str) -> dict:
         "networkStrength": int(network_strength) if isinstance(network_strength, int) else -1,
         "plugins": plugins,
         "hasSms": has_plugin(bus, device_id, "kdeconnect_sms") or "sms" in plugins,
+        "hasNotifications": has_plugin(bus, device_id, "kdeconnect_notifications") or "notifications" in plugins,
+        "notificationCount": _notification_count(bus, device_id),
     }
+
+
+def _notification_count(bus, device_id: str) -> int:
+    try:
+        result = call(
+            bus,
+            plugin_path(device_id, "notifications"),
+            "org.kde.kdeconnect.device.notifications",
+            "activeNotifications",
+            None,
+            "(as)",
+        )
+        return len(result.unpack()[0] or [])
+    except GLib.Error:
+        return 0
 
 
 def sort_devices(devices: list[dict]) -> list[dict]:

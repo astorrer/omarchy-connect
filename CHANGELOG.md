@@ -1,5 +1,16 @@
 # Changelog
 
+## 0.4.0
+
+Notification feed from the phone's KDE Connect notifications plugin.
+
+- List active notifications in the panel (`n`, or Notifications)
+- Dismiss one (`d`) or all
+- Reply when the phone exposes a reply id
+- Badge the bar icon while any are waiting
+
+Desktop popups from `kdeconnectd` still appear; this is the inbox after they vanish.
+
 ## 0.3.0
 
 Freeze of the current phone panel: pairing, ping, ring, clipboard, file share, SMS, and contact names from synced vCards.
