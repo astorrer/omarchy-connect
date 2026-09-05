@@ -202,24 +202,45 @@ Panel {
       scrollCursorIntoView()
       return
     }
-    if (dx !== 0 && dy === 0) {
-      if (dx > 0) activateCursor()
-      else goBack()
-      return
-    }
     if (view === "sms") {
+      if (dx !== 0 && dy === 0) {
+        if (dx > 0) activateCursor()
+        else goBack()
+        return
+      }
       smsView.cursorActive = true
       smsView.moveList(dy)
       scrollCursorIntoView()
       return
     }
     if (view === "notifications") {
+      if (dx !== 0 && dy === 0) {
+        if (dx > 0) activateCursor()
+        else goBack()
+        return
+      }
       notifyView.cursorActive = true
       notifyView.moveList(dy)
       scrollCursorIntoView()
       return
     }
     ensureCursor()
+    if (focusSection === "actions") {
+      var next = Model.moveActionIndex(actions, actionIndex, dx, dy)
+      if (next < 0) {
+        focusSection = "devices"
+        if (connect.devices.length > 0) deviceIndex = connect.devices.length - 1
+      } else {
+        actionIndex = next
+      }
+      scrollCursorIntoView()
+      return
+    }
+    if (dx !== 0 && dy === 0) {
+      if (dx > 0) activateCursor()
+      else goBack()
+      return
+    }
     if (dy === 0) return
     if (focusSection === "setup") return
     if (focusSection === "header") {
@@ -232,12 +253,6 @@ Panel {
         actionIndex = 0
       } else {
         deviceIndex = Math.max(0, Math.min(connect.devices.length - 1, deviceIndex + dy))
-      }
-    } else if (focusSection === "actions") {
-      if (dy < 0 && actionIndex === 0) {
-        focusSection = "devices"
-      } else {
-        actionIndex = Math.max(0, Math.min(actions.length - 1, actionIndex + dy))
       }
     }
     scrollCursorIntoView()

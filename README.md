@@ -22,8 +22,8 @@ For names in SMS: KDE Connect → this computer → **Contacts**. Grant permissi
 
 Keys inside the panel:
 
-- Arrows or `j`/`k` move. The list follows the highlight.
-- Enter or right/`l` activate. Left/`h` or Esc go back.
+- Arrows or `h` `j` `k` `l` move the highlight, including left/right on the button pad.
+- Enter activates. Esc goes back.
 - `n` notifications · `m` messages · `d` dismiss · `p` ping · `f` ring · `c` clipboard · `s` send file · `r` refresh · `,` settings
 
 The version in the footer opens the project page.

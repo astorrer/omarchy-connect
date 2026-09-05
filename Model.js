@@ -1,4 +1,4 @@
-var PLUGIN_VERSION = "1.1.1"
+var PLUGIN_VERSION = "1.1.2"
 var PROJECT_URL = "https://github.com/astorrer/omarchy-connect"
 
 function parseStatus(raw) {
@@ -102,6 +102,71 @@ function indexInKind(actions, kind, globalIndex) {
     n++
   }
   return 0
+}
+
+function kindColumns(kind, count) {
+  var n = Math.max(1, count || 1)
+  if (kind === "inbox" || kind === "choice") return Math.min(2, n)
+  if (kind === "danger") return 1
+  return n
+}
+
+function kindRange(actions, index) {
+  var list = actions || []
+  if (list.length === 0) return { start: 0, count: 0, kind: "" }
+  var i = Math.max(0, Math.min(list.length - 1, index | 0))
+  var kind = list[i].kind
+  var start = i
+  while (start > 0 && list[start - 1].kind === kind) start--
+  var end = i
+  while (end + 1 < list.length && list[end + 1].kind === kind) end++
+  return { start: start, count: end - start + 1, kind: kind }
+}
+
+function indexInGroupColumn(actions, indexInGroup, col, fromEnd) {
+  var range = kindRange(actions, indexInGroup)
+  if (range.count <= 0) return 0
+  var cols = kindColumns(range.kind, range.count)
+  var c = Math.max(0, Math.min(cols - 1, col | 0))
+  var row = fromEnd ? Math.ceil(range.count / cols) - 1 : 0
+  var local = row * cols + c
+  if (local >= range.count) local = range.count - 1
+  return range.start + local
+}
+
+function moveActionIndex(actions, current, dx, dy) {
+  var list = actions || []
+  if (list.length === 0) return 0
+  var i = Math.max(0, Math.min(list.length - 1, current | 0))
+  if (!dx && !dy) return i
+  var range = kindRange(list, i)
+  var cols = kindColumns(range.kind, range.count)
+  var local = i - range.start
+  var row = Math.floor(local / cols)
+  var col = local % cols
+  var rows = Math.ceil(range.count / cols)
+  if (dx && !dy) {
+    var nextCol = col + dx
+    var nextLocal = row * cols + nextCol
+    if (nextCol >= 0 && nextCol < cols && nextLocal < range.count) return range.start + nextLocal
+    return i
+  }
+  if (dy) {
+    var nextRow = row + dy
+    if (nextRow >= 0 && nextRow < rows) {
+      var stepped = nextRow * cols + col
+      if (stepped >= range.count) stepped = range.count - 1
+      return range.start + stepped
+    }
+    if (dy > 0) {
+      var after = range.start + range.count
+      if (after >= list.length) return i
+      return indexInGroupColumn(list, after, col, false)
+    }
+    if (range.start === 0) return -1
+    return indexInGroupColumn(list, range.start - 1, col, true)
+  }
+  return i
 }
 
 function heroPhrases(device) {

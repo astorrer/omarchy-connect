@@ -1,5 +1,9 @@
 # Changelog
 
+## 1.1.2
+
+Arrow keys walk the button pad in two dimensions. Enter activates; Esc goes back.
+
 ## 1.1.1
 
 Threads keep Inbox at the top and the reply field at the bottom. Only the messages scroll. Esc from the reply field returns to the inbox.
