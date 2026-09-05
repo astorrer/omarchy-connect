@@ -27,6 +27,7 @@ Column {
   readonly property int listCount: page === "inbox" ? conversations.length + 2 : messages.length
 
   signal backRequested()
+  signal releaseEditor()
 
   width: parent ? parent.width : 0
   spacing: Style.space(10)
@@ -35,7 +36,9 @@ Column {
     page = "inbox"
     thread = null
     listIndex = 0
+    cursorActive = true
     if (deviceId !== "") service.loadConversations(deviceId)
+    releaseEditor()
   }
 
   function openThread(conversation) {
@@ -43,7 +46,9 @@ Column {
     page = "thread"
     draft = ""
     listIndex = 0
+    cursorActive = true
     if (deviceId !== "" && conversation) service.loadThread(deviceId, conversation.threadId)
+    releaseEditor()
   }
 
   function openCompose() {
@@ -51,15 +56,56 @@ Column {
     thread = null
     composeTo = ""
     draft = ""
+    cursorActive = true
+    listIndex = 0
+    Qt.callLater(function() { if (toField) toField.forceActiveFocus() })
+  }
+
+  function inboxMax() {
+    return 1 + conversations.length
+  }
+
+  function threadMax() {
+    return messages.length
   }
 
   function moveList(dy) {
-    if (page !== "inbox" || conversations.length === 0) return
-    listIndex = Math.max(0, Math.min(conversations.length + 1, listIndex + dy))
+    if (dy === 0) return
+    cursorActive = true
+    if (page === "compose") {
+      if (dy > 0) draftField.forceActiveFocus()
+      else toField.forceActiveFocus()
+      return
+    }
+    if (page === "thread") {
+      var tMax = threadMax()
+      listIndex = Math.max(0, Math.min(tMax, listIndex + dy))
+      if (listIndex === tMax) draftField.forceActiveFocus()
+      else {
+        draftField.focus = false
+        releaseEditor()
+      }
+      return
+    }
+    listIndex = Math.max(0, Math.min(inboxMax(), listIndex + dy))
   }
 
   function activateList() {
-    if (page !== "inbox") return
+    if (page === "compose") {
+      if (toField.activeFocus) {
+        draftField.forceActiveFocus()
+        return
+      }
+      sendDraft()
+      return
+    }
+    if (page === "thread") {
+      if (listIndex >= messages.length) {
+        if (draftField.activeFocus) sendDraft()
+        else draftField.forceActiveFocus()
+      }
+      return
+    }
     if (listIndex === 0) {
       openCompose()
       return
@@ -264,30 +310,47 @@ Column {
 
     Repeater {
       model: root.messages
-      RowLayout {
+      CursorSurface {
+        id: msgRow
         required property var modelData
+        required property int index
         width: parent.width
-        layoutDirection: modelData.fromMe ? Qt.RightToLeft : Qt.LeftToRight
-        Item { Layout.fillWidth: true }
-        Column {
-          Layout.maximumWidth: parent.width * 0.82
-          spacing: Style.space(2)
-          Text {
-            width: parent.width
-            text: String(modelData.body || (modelData.attachmentCount ? "Attachment" : ""))
-            color: root.foreground
-            font.family: root.fontFamily
-            font.pixelSize: Style.font.body
-            wrapMode: Text.Wrap
-            horizontalAlignment: modelData.fromMe ? Text.AlignRight : Text.AlignLeft
-          }
-          Text {
-            width: parent.width
-            text: Model.formatSmsTime(modelData.date)
-            color: root.dim
-            font.family: root.fontFamily
-            font.pixelSize: Style.font.caption
-            horizontalAlignment: modelData.fromMe ? Text.AlignRight : Text.AlignLeft
+        hasCursor: root.cursorActive && root.page === "thread" && root.listIndex === index && !root.editorFocused
+        foreground: root.foreground
+        implicitHeight: msgInner.implicitHeight + Style.space(6)
+        MouseArea {
+          anchors.fill: parent
+          hoverEnabled: true
+          onEntered: { root.cursorActive = true; root.listIndex = msgRow.index }
+          onClicked: { root.listIndex = root.messages.length; draftField.forceActiveFocus() }
+        }
+        RowLayout {
+          id: msgInner
+          anchors.left: parent.left
+          anchors.right: parent.right
+          width: parent.width
+          layoutDirection: msgRow.modelData.fromMe ? Qt.RightToLeft : Qt.LeftToRight
+          Item { Layout.fillWidth: true }
+          Column {
+            Layout.maximumWidth: parent.width * 0.82
+            spacing: Style.space(2)
+            Text {
+              width: parent.width
+              text: String(msgRow.modelData.body || (msgRow.modelData.attachmentCount ? "Attachment" : ""))
+              color: root.foreground
+              font.family: root.fontFamily
+              font.pixelSize: Style.font.body
+              wrapMode: Text.Wrap
+              horizontalAlignment: msgRow.modelData.fromMe ? Text.AlignRight : Text.AlignLeft
+            }
+            Text {
+              width: parent.width
+              text: Model.formatSmsTime(msgRow.modelData.date)
+              color: root.dim
+              font.family: root.fontFamily
+              font.pixelSize: Style.font.caption
+              horizontalAlignment: msgRow.modelData.fromMe ? Text.AlignRight : Text.AlignLeft
+            }
           }
         }
       }
@@ -307,6 +370,16 @@ Column {
       placeholderText: "Phone number"
       text: root.composeTo
       onTextChanged: root.composeTo = text
+      onAccepted: draftField.forceActiveFocus()
+      Keys.onPressed: function(event) {
+        if (event.key === Qt.Key_Escape) {
+          event.accepted = true
+          root.openInbox()
+        } else if (event.key === Qt.Key_Down) {
+          event.accepted = true
+          draftField.forceActiveFocus()
+        }
+      }
     }
 
     RowLayout {
@@ -320,6 +393,23 @@ Column {
         text: root.draft
         onTextChanged: root.draft = text
         onAccepted: root.sendDraft()
+        hasCursor: root.page === "thread" && root.listIndex === root.messages.length
+        Keys.onPressed: function(event) {
+          if (event.key === Qt.Key_Escape) {
+            event.accepted = true
+            draftField.focus = false
+            root.releaseEditor()
+            if (root.page === "compose") root.openInbox()
+          } else if (event.key === Qt.Key_Up && root.page === "thread") {
+            event.accepted = true
+            draftField.focus = false
+            root.listIndex = Math.max(0, root.messages.length - 1)
+            root.releaseEditor()
+          } else if (event.key === Qt.Key_Up && root.page === "compose") {
+            event.accepted = true
+            toField.forceActiveFocus()
+          }
+        }
       }
       PanelActionButton {
         iconText: "󰒊"

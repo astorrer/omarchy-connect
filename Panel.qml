@@ -70,6 +70,20 @@ Panel {
     if (actionIndex >= actions.length) actionIndex = Math.max(0, actions.length - 1)
   }
 
+  function armCursor() {
+    cursorActive = true
+    if (!connect.installed) {
+      focusSection = "setup"
+      return
+    }
+    if (connect.devices.length > 0) {
+      focusSection = "devices"
+      if (deviceIndex < 0 || deviceIndex >= connect.devices.length) deviceIndex = 0
+      return
+    }
+    focusSection = "header"
+  }
+
   function moveCursor(dx, dy) {
     cursorActive = true
     if (view === "sms") {
@@ -120,7 +134,10 @@ Panel {
       connect.toggleRunning()
       return
     }
-    if (focusSection === "devices") return
+    if (focusSection === "devices") {
+      runAction({ id: "messages" })
+      return
+    }
     if (focusSection === "actions") runAction(actions[actionIndex])
   }
 
@@ -156,7 +173,9 @@ Panel {
   }
 
   onOpenedChanged: if (opened) {
-    cursorActive = false
+    view = "main"
+    smsDevice = null
+    armCursor()
     connect.refresh()
     Qt.callLater(function() { keyCatcher.forceActiveFocus() })
   }
@@ -212,15 +231,20 @@ Panel {
       id: keyCatcher
       anchors.fill: parent
       onMoveRequested: function(dx, dy) {
-        if (!root.cursorActive) { root.cursorActive = true; return }
+        root.cursorActive = true
         root.moveCursor(dx, dy)
       }
       blocked: smsView.editorFocused
-      onActivateRequested: if (root.cursorActive || root.view === "sms") root.activateCursor()
+      onActivateRequested: root.activateCursor()
       onCloseRequested: {
         if (root.view === "sms") {
           if (smsView.page !== "inbox") smsView.openInbox()
-          else { root.view = "main"; root.smsDevice = null }
+          else {
+            root.view = "main"
+            root.smsDevice = null
+            root.armCursor()
+            Qt.callLater(function() { keyCatcher.forceActiveFocus() })
+          }
           return
         }
         root.close()
@@ -325,7 +349,13 @@ Panel {
             dim: root.dim
             fontFamily: root.fontFamily
             cursorActive: root.cursorActive
-            onBackRequested: { root.view = "main"; root.smsDevice = null }
+            onBackRequested: {
+              root.view = "main"
+              root.smsDevice = null
+              root.armCursor()
+              Qt.callLater(function() { keyCatcher.forceActiveFocus() })
+            }
+            onReleaseEditor: Qt.callLater(function() { keyCatcher.forceActiveFocus() })
           }
 
           Column {
