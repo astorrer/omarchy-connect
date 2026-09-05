@@ -48,6 +48,8 @@ Panel {
     return "No devices yet"
   }
 
+  property string view: "main"
+  property var smsDevice: null
   property string focusSection: "header"
   property int deviceIndex: 0
   property int actionIndex: 0
@@ -70,6 +72,11 @@ Panel {
 
   function moveCursor(dx, dy) {
     cursorActive = true
+    if (view === "sms") {
+      smsView.cursorActive = true
+      smsView.moveList(dy)
+      return
+    }
     ensureCursor()
     if (dy === 0) return
     if (focusSection === "setup") return
@@ -100,6 +107,10 @@ Panel {
   }
 
   function activateCursor() {
+    if (view === "sms") {
+      smsView.activateList()
+      return
+    }
     ensureCursor()
     if (focusSection === "setup") {
       connect.setup()
@@ -116,7 +127,13 @@ Panel {
   function runAction(action) {
     if (!action || !selectedDevice) return
     var id = selectedDevice.id
-    if (action.id === "ping") connect.ping(id)
+    if (action.id === "messages") {
+      smsDevice = selectedDevice
+      view = "sms"
+      smsView.openInbox()
+      return
+    }
+    else if (action.id === "ping") connect.ping(id)
     else if (action.id === "ring") connect.ring(id)
     else if (action.id === "clipboard") connect.sendClipboard(id)
     else if (action.id === "file") connect.shareFile(id)
@@ -198,11 +215,22 @@ Panel {
         if (!root.cursorActive) { root.cursorActive = true; return }
         root.moveCursor(dx, dy)
       }
-      onActivateRequested: if (root.cursorActive) root.activateCursor()
-      onCloseRequested: root.close()
+      blocked: smsView.editorFocused
+      onActivateRequested: if (root.cursorActive || root.view === "sms") root.activateCursor()
+      onCloseRequested: {
+        if (root.view === "sms") {
+          if (smsView.page !== "inbox") smsView.openInbox()
+          else { root.view = "main"; root.smsDevice = null }
+          return
+        }
+        root.close()
+      }
       onTabRequested: function(direction) { root.switchPanel(direction) }
       onTextKey: function(t) {
         if (t === "r" || t === "R") connect.refresh()
+        else if (t === "m" || t === "M") {
+          if (root.selectedDevice) root.runAction({ id: "messages" })
+        }
         else if (t === "p" || t === "P") { if (root.selectedDevice) connect.ping(root.selectedDevice.id) }
         else if (t === "f" || t === "F") { if (root.selectedDevice) connect.ring(root.selectedDevice.id) }
         else if (t === "c" || t === "C") { if (root.selectedDevice) connect.sendClipboard(root.selectedDevice.id) }
@@ -228,7 +256,7 @@ Panel {
 
           Item {
             id: header
-            visible: connect.installed
+            visible: connect.installed && root.view === "main"
             width: parent.width
             implicitHeight: hero.implicitHeight
             readonly property bool ringVisible: root.headerHasCursor
@@ -287,8 +315,21 @@ Panel {
             width: parent.width
           }
 
+          SmsView {
+            id: smsView
+            visible: root.view === "sms"
+            width: parent.width
+            service: connect
+            device: root.smsDevice || root.selectedDevice
+            foreground: root.foreground
+            dim: root.dim
+            fontFamily: root.fontFamily
+            cursorActive: root.cursorActive
+            onBackRequested: { root.view = "main"; root.smsDevice = null }
+          }
+
           Column {
-            visible: connect.installed && connect.active
+            visible: connect.installed && connect.active && root.view === "main"
             width: parent.width
             spacing: Style.space(10)
 

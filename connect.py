@@ -19,8 +19,11 @@ BUS_NAME = "org.kde.kdeconnect"
 DAEMON_PATH = "/modules/kdeconnect"
 DAEMON_IFACE = "org.kde.kdeconnect.daemon"
 DEVICE_IFACE = "org.kde.kdeconnect.device"
+CONV_IFACE = "org.kde.kdeconnect.device.conversations"
+SMS_IFACE = "org.kde.kdeconnect.device.sms"
 PROPS_IFACE = "org.freedesktop.DBus.Properties"
 TIMEOUT_MS = 2500
+SMS_TIMEOUT_MS = 5000
 
 DAEMON_CANDIDATES = (
     "/usr/lib/kdeconnectd",
@@ -82,14 +85,14 @@ def name_has_owner(bus, name: str) -> bool:
         return False
 
 
-def call(bus, path: str, iface: str, method: str, params: GLib.Variant | None = None):
+def call(bus, path: str, iface: str, method: str, params: GLib.Variant | None = None, reply_type: str | None = None):
     return bus.call_sync(
         BUS_NAME,
         path,
         iface,
         method,
         params,
-        None,
+        GLib.VariantType(reply_type) if reply_type else None,
         Gio.DBusCallFlags.NONE,
         TIMEOUT_MS,
         None,
@@ -149,10 +152,79 @@ def plugin_path(device_id: str, plugin: str) -> str:
     return f"{device_path(device_id)}/{plugin}"
 
 
+def unpack_string_list(result) -> list[str]:
+    raw = result.unpack() if hasattr(result, "unpack") else result
+    if isinstance(raw, (list, tuple)) and len(raw) == 1 and isinstance(raw[0], (list, tuple)):
+        raw = raw[0]
+    return [str(item) for item in (raw or [])]
+
+
+def plugin_names(bus, device_id: str) -> list[str]:
+    path = device_path(device_id)
+    names = get_prop(bus, path, DEVICE_IFACE, "supportedPlugins", []) or []
+    if not names:
+        try:
+            names = unpack_string_list(call(bus, path, DEVICE_IFACE, "loadedPlugins", None))
+        except GLib.Error:
+            names = []
+    cleaned = []
+    for name in names:
+        text = str(name)
+        if text.startswith("kdeconnect_"):
+            text = text.split("_", 1)[-1]
+        cleaned.append(text)
+    return cleaned
+
+
+def parse_message(raw) -> dict | None:
+    if raw is None:
+        return None
+    if isinstance(raw, dict):
+        body = str(raw.get("body") or "")
+        addresses = [str(item) for item in (raw.get("addresses") or [])]
+        return {
+            "event": int(raw.get("event") or 0),
+            "body": body,
+            "addresses": addresses,
+            "date": int(raw.get("date") or 0),
+            "type": int(raw.get("type") or 0),
+            "read": int(raw.get("read") or 0),
+            "threadId": int(raw.get("threadId") or 0),
+            "id": int(raw.get("id") or 0),
+            "fromMe": bool(raw.get("fromMe")),
+            "attachmentCount": int(raw.get("attachmentCount") or 0),
+        }
+    if not isinstance(raw, (list, tuple)) or len(raw) < 8:
+        return None
+    addresses = []
+    for item in raw[2] or []:
+        if isinstance(item, (list, tuple)) and item:
+            addresses.append(str(item[0]))
+        else:
+            addresses.append(str(item))
+    unique = []
+    for address in addresses:
+        if address and address not in unique:
+            unique.append(address)
+    msg_type = int(raw[4] or 0)
+    attachments = raw[9] if len(raw) > 9 else []
+    return {
+        "event": int(raw[0] or 0),
+        "body": str(raw[1] or ""),
+        "addresses": unique,
+        "date": int(raw[3] or 0),
+        "type": msg_type,
+        "read": int(raw[5] or 0),
+        "threadId": int(raw[6] or 0),
+        "id": int(raw[7] or 0),
+        "fromMe": msg_type == 2,
+        "attachmentCount": len(attachments or []),
+    }
+
+
 def read_device(bus, device_id: str) -> dict:
     path = device_path(device_id)
-    plugins = get_prop(bus, path, DEVICE_IFACE, "loadedPlugins", []) or []
-    plugins = [str(item).split(".")[-1] for item in plugins]
+    plugins = plugin_names(bus, device_id)
     battery = -1
     charging = False
     if "battery" in plugins or True:
@@ -195,7 +267,24 @@ def read_device(bus, device_id: str) -> dict:
         "networkType": str(network_type or ""),
         "networkStrength": int(network_strength) if isinstance(network_strength, int) else -1,
         "plugins": plugins,
+        "hasSms": has_plugin(bus, device_id, "kdeconnect_sms") or "sms" in plugins,
     }
+
+
+def has_plugin(bus, device_id: str, name: str) -> bool:
+    try:
+        return bool(
+            call(
+                bus,
+                device_path(device_id),
+                DEVICE_IFACE,
+                "hasPlugin",
+                GLib.Variant("(s)", (name,)),
+                "b",
+            ).unpack()[0]
+        )
+    except GLib.Error:
+        return False
 
 
 def sort_devices(devices: list[dict]) -> list[dict]:
@@ -395,6 +484,165 @@ def cmd_send_clipboard(args: list[str]) -> None:
     emit({"ok": True})
 
 
+def conversation_title(message: dict) -> str:
+    addresses = message.get("addresses") or []
+    if not addresses:
+        return "Unknown"
+    if len(addresses) == 1:
+        return addresses[0]
+    return f"{addresses[0]} +{len(addresses) - 1}"
+
+
+def active_conversations(bus, device_id: str) -> list[dict]:
+    result = call(bus, device_path(device_id), CONV_IFACE, "activeConversations", None)
+    rows = []
+    for raw in result.unpack()[0]:
+        message = parse_message(raw)
+        if not message:
+            continue
+        message["title"] = conversation_title(message)
+        rows.append(message)
+    rows.sort(key=lambda item: item.get("date") or 0, reverse=True)
+    return rows
+
+
+def cmd_conversations(args: list[str]) -> None:
+    bus, device_id = require_device(args[0] if args else "")
+    try:
+        call(bus, device_path(device_id), CONV_IFACE, "requestAllConversationThreads", None)
+    except GLib.Error:
+        try:
+            call(bus, plugin_path(device_id, "sms"), SMS_IFACE, "requestAllConversations", None)
+        except GLib.Error:
+            pass
+    emit({"ok": True, "conversations": active_conversations(bus, device_id)})
+
+
+def collect_thread(bus, device_id: str, thread_id: int, timeout_ms: int = 3500) -> list[dict]:
+    path = device_path(device_id)
+    messages: dict[int, dict] = {}
+    loop = GLib.MainLoop()
+    idle_id = {"id": 0}
+
+    def quit_soon():
+        if idle_id["id"]:
+            GLib.source_remove(idle_id["id"])
+        idle_id["id"] = GLib.timeout_add(400, loop.quit)
+
+    def on_signal(_conn, _sender, _path, _iface, signal, params):
+        if signal in ("conversationUpdated", "conversationCreated"):
+            raw = params.unpack()[0]
+            message = parse_message(raw)
+            if message and int(message["threadId"]) == thread_id:
+                messages[int(message["id"])] = message
+                quit_soon()
+        elif signal == "conversationLoaded":
+            loaded = params.unpack()[0]
+            if int(loaded) == thread_id:
+                loop.quit()
+
+    bus.signal_subscribe(BUS_NAME, CONV_IFACE, None, path, None, Gio.DBusSignalFlags.NONE, on_signal)
+    try:
+        call(bus, path, CONV_IFACE, "requestConversation", GLib.Variant("(xii)", (thread_id, 0, 40)))
+    except GLib.Error:
+        call(bus, plugin_path(device_id, "sms"), SMS_IFACE, "requestConversation", GLib.Variant("(x)", (thread_id,)))
+    GLib.timeout_add(timeout_ms, loop.quit)
+    loop.run()
+    rows = sorted(messages.values(), key=lambda item: item.get("date") or 0)
+    if not rows:
+        for item in active_conversations(bus, device_id):
+            if int(item.get("threadId") or 0) == thread_id:
+                rows = [item]
+                break
+    return rows
+
+
+def cmd_conversation(args: list[str]) -> None:
+    if len(args) < 2:
+        fail("Usage: conversation <device-id> <thread-id>")
+    bus, device_id = require_device(args[0])
+    try:
+        thread_id = int(args[1])
+    except ValueError:
+        fail("Thread id must be a number")
+    emit({"ok": True, "threadId": thread_id, "messages": collect_thread(bus, device_id, thread_id)})
+
+
+def cmd_sms_reply(args: list[str]) -> None:
+    if len(args) < 3:
+        fail("Usage: sms-reply <device-id> <thread-id> <text>")
+    bus, device_id = require_device(args[0])
+    try:
+        thread_id = int(args[1])
+    except ValueError:
+        fail("Thread id must be a number")
+    text = " ".join(args[2:]).strip()
+    if not text:
+        fail("Message is empty")
+    try:
+        call(
+            bus,
+            device_path(device_id),
+            CONV_IFACE,
+            "replyToConversation",
+            GLib.Variant("(xsav)", (thread_id, text, [])),
+        )
+    except GLib.Error:
+        call(
+            bus,
+            device_path(device_id),
+            CONV_IFACE,
+            "replyToConversation",
+            GLib.Variant("(xs)", (thread_id, text)),
+        )
+    emit({"ok": True})
+
+
+def cmd_sms_send(args: list[str]) -> None:
+    if len(args) < 3:
+        fail("Usage: sms-send <device-id> <number> <text>")
+    bus, device_id = require_device(args[0])
+    number = args[1].strip()
+    text = " ".join(args[2:]).strip()
+    if not number or not text:
+        fail("Number and message are required")
+    addresses = [GLib.Variant("(s)", (number,))]
+    try:
+        call(
+            bus,
+            device_path(device_id),
+            CONV_IFACE,
+            "sendWithoutConversation",
+            GLib.Variant("(avsav)", (addresses, text, [])),
+        )
+    except GLib.Error:
+        call(
+            bus,
+            plugin_path(device_id, "sms"),
+            SMS_IFACE,
+            "sendSms",
+            GLib.Variant("(avsav)", (addresses, text, [])),
+        )
+    emit({"ok": True})
+
+
+def cmd_sms_app(args: list[str]) -> None:
+    bus, device_id = require_device(args[0] if args else "")
+    try:
+        call(bus, plugin_path(device_id, "sms"), SMS_IFACE, "launchApp", None)
+    except GLib.Error:
+        app = shutil.which("kdeconnect-sms")
+        if not app:
+            fail("kdeconnect-sms is not installed")
+        subprocess.Popen(
+            [app, "--device", device_id],
+            start_new_session=True,
+            stdout=subprocess.DEVNULL,
+            stderr=subprocess.DEVNULL,
+        )
+    emit({"ok": True})
+
+
 def cmd_autostart(_args: list[str]) -> None:
     path = daemon_path()
     if not path:
@@ -417,6 +665,11 @@ COMMANDS = {
     "share-file": cmd_share_file,
     "share-text": cmd_share_text,
     "send-clipboard": cmd_send_clipboard,
+    "conversations": cmd_conversations,
+    "conversation": cmd_conversation,
+    "sms-reply": cmd_sms_reply,
+    "sms-send": cmd_sms_send,
+    "sms-app": cmd_sms_app,
     "autostart": cmd_autostart,
 }
 

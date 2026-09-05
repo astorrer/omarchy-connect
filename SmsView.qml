@@ -1,0 +1,337 @@
+import QtQuick
+import QtQuick.Layouts
+import qs.Commons
+import qs.Ui
+import "Model.js" as Model
+
+Column {
+  id: root
+  property var service: null
+  property var device: null
+  property string page: "inbox"
+  property var thread: null
+  property color foreground: Color.foreground
+  property color dim: Qt.darker(foreground, 1.55)
+  property string fontFamily: Style.font.family
+  property bool cursorActive: false
+  property int listIndex: 0
+  property string draft: ""
+  property string composeTo: ""
+
+  readonly property var conversations: service ? (service.conversations || []) : []
+  readonly property var messages: service ? (service.messages || []) : []
+  readonly property bool loading: service ? service.smsLoading === true : false
+  readonly property string deviceId: device ? String(device.id || "") : ""
+  readonly property bool composing: page === "compose" || page === "thread"
+  readonly property bool editorFocused: toField.activeFocus || draftField.activeFocus
+  readonly property int listCount: page === "inbox" ? conversations.length + 2 : messages.length
+
+  signal backRequested()
+  signal pageChanged(string page)
+
+  width: parent ? parent.width : 0
+  spacing: Style.space(10)
+
+  function openInbox() {
+    page = "inbox"
+    thread = null
+    listIndex = 0
+    if (deviceId !== "") service.loadConversations(deviceId)
+    pageChanged(page)
+  }
+
+  function openThread(conversation) {
+    thread = conversation
+    page = "thread"
+    draft = ""
+    listIndex = 0
+    if (deviceId !== "" && conversation) service.loadThread(deviceId, conversation.threadId)
+    pageChanged(page)
+  }
+
+  function openCompose() {
+    page = "compose"
+    thread = null
+    composeTo = ""
+    draft = ""
+    pageChanged(page)
+  }
+
+  function moveList(dy) {
+    if (page !== "inbox" || conversations.length === 0) return
+    listIndex = Math.max(0, Math.min(conversations.length + 1, listIndex + dy))
+  }
+
+  function activateList() {
+    if (page !== "inbox") return
+    if (listIndex === 0) {
+      openCompose()
+      return
+    }
+    if (listIndex === 1) {
+      if (service) service.smsApp(deviceId)
+      return
+    }
+    var conv = conversations[listIndex - 2]
+    if (conv) openThread(conv)
+  }
+
+  function sendDraft() {
+    var text = String(draft || "").trim()
+    if (!service || !deviceId || text === "") return
+    if (page === "thread" && thread) {
+      service.smsReply(deviceId, thread.threadId, text)
+      draft = ""
+      Qt.callLater(function() { if (root.thread) service.loadThread(deviceId, root.thread.threadId) })
+      return
+    }
+    var number = String(composeTo || "").trim()
+    if (number === "") return
+    service.smsSend(deviceId, number, text)
+    draft = ""
+    openInbox()
+  }
+
+  RowLayout {
+    width: parent.width
+    spacing: Style.space(8)
+
+    CursorSurface {
+      id: backButton
+      hasCursor: false
+      foreground: root.foreground
+      implicitWidth: backLabel.implicitWidth + Style.space(12)
+      implicitHeight: backLabel.implicitHeight + Style.space(8)
+      MouseArea {
+        anchors.fill: parent
+        hoverEnabled: true
+        cursorShape: Qt.PointingHandCursor
+        onClicked: {
+          if (root.page === "inbox") root.backRequested()
+          else root.openInbox()
+        }
+      }
+      Text {
+        id: backLabel
+        anchors.centerIn: parent
+        text: root.page === "inbox" ? "Devices" : "Inbox"
+        color: root.foreground
+        font.family: root.fontFamily
+        font.pixelSize: Style.font.body
+      }
+    }
+
+    Text {
+      Layout.fillWidth: true
+      text: root.page === "compose" ? "New message" : (root.page === "thread" ? Model.conversationTitle(root.thread) : "Messages")
+      color: root.foreground
+      font.family: root.fontFamily
+      font.pixelSize: Style.font.body
+      elide: Text.ElideRight
+    }
+  }
+
+  Text {
+    visible: root.loading
+    width: parent.width
+    text: "Loading…"
+    color: root.dim
+    font.family: root.fontFamily
+    font.pixelSize: Style.font.caption
+  }
+
+  Column {
+    visible: root.page === "inbox"
+    width: parent.width
+    spacing: Style.space(6)
+
+    CursorSurface {
+      id: newRow
+      width: parent.width
+      hasCursor: root.cursorActive && root.page === "inbox" && root.listIndex === 0
+      foreground: root.foreground
+      implicitHeight: Style.space(32)
+      MouseArea {
+        anchors.fill: parent
+        hoverEnabled: true
+        cursorShape: Qt.PointingHandCursor
+        onEntered: { root.cursorActive = true; root.listIndex = 0 }
+        onClicked: root.openCompose()
+      }
+      Text {
+        anchors.verticalCenter: parent.verticalCenter
+        anchors.left: parent.left
+        anchors.leftMargin: Style.space(10)
+        text: "󰍩  New message"
+        color: root.foreground
+        font.family: root.fontFamily
+        font.pixelSize: Style.font.body
+      }
+    }
+
+    CursorSurface {
+      width: parent.width
+      hasCursor: root.cursorActive && root.page === "inbox" && root.listIndex === 1
+      foreground: root.foreground
+      implicitHeight: Style.space(32)
+      MouseArea {
+        anchors.fill: parent
+        hoverEnabled: true
+        cursorShape: Qt.PointingHandCursor
+        onEntered: { root.cursorActive = true; root.listIndex = 1 }
+        onClicked: if (root.service) root.service.smsApp(root.deviceId)
+      }
+      Text {
+        anchors.verticalCenter: parent.verticalCenter
+        anchors.left: parent.left
+        anchors.leftMargin: Style.space(10)
+        text: "󰏌  Open SMS app"
+        color: root.dim
+        font.family: root.fontFamily
+        font.pixelSize: Style.font.body
+      }
+    }
+
+    Text {
+      visible: !root.loading && root.conversations.length === 0
+      width: parent.width
+      text: "No conversations yet. SMS needs to be enabled in KDE Connect on the phone."
+      color: root.dim
+      font.family: root.fontFamily
+      font.pixelSize: Style.font.caption
+      wrapMode: Text.WordWrap
+    }
+
+    Repeater {
+      model: root.conversations
+      CursorSurface {
+        id: convRow
+        required property var modelData
+        required property int index
+        width: parent.width
+        hasCursor: root.cursorActive && root.page === "inbox" && root.listIndex === index + 2
+        foreground: root.foreground
+        implicitHeight: convInner.implicitHeight + Style.spacing.rowPaddingX
+        MouseArea {
+          anchors.fill: parent
+          hoverEnabled: true
+          cursorShape: Qt.PointingHandCursor
+          onEntered: { root.cursorActive = true; root.listIndex = convRow.index + 2 }
+          onClicked: root.openThread(convRow.modelData)
+        }
+        RowLayout {
+          id: convInner
+          anchors.left: parent.left
+          anchors.right: parent.right
+          anchors.verticalCenter: parent.verticalCenter
+          anchors.leftMargin: Style.space(10)
+          anchors.rightMargin: Style.space(10)
+          spacing: Style.space(8)
+          ColumnLayout {
+            Layout.fillWidth: true
+            spacing: Style.space(1)
+            RowLayout {
+              Layout.fillWidth: true
+              Text {
+                text: Model.conversationTitle(convRow.modelData)
+                color: root.foreground
+                font.family: root.fontFamily
+                font.pixelSize: Style.font.body
+                elide: Text.ElideRight
+                Layout.fillWidth: true
+              }
+              Text {
+                text: Model.formatSmsTime(convRow.modelData.date)
+                color: root.dim
+                font.family: root.fontFamily
+                font.pixelSize: Style.font.caption
+              }
+            }
+            Text {
+              text: Model.previewText(convRow.modelData)
+              color: convRow.modelData.read === 0 ? root.foreground : root.dim
+              font.family: root.fontFamily
+              font.pixelSize: Style.font.caption
+              elide: Text.ElideRight
+              Layout.fillWidth: true
+            }
+          }
+        }
+      }
+    }
+  }
+
+  Column {
+    visible: root.page === "thread"
+    width: parent.width
+    spacing: Style.space(6)
+
+    Repeater {
+      model: root.messages
+      RowLayout {
+        required property var modelData
+        width: parent.width
+        layoutDirection: modelData.fromMe ? Qt.RightToLeft : Qt.LeftToRight
+        Item { Layout.fillWidth: true }
+        Column {
+          Layout.maximumWidth: parent.width * 0.82
+          spacing: Style.space(2)
+          Text {
+            width: parent.width
+            text: String(modelData.body || (modelData.attachmentCount ? "Attachment" : ""))
+            color: root.foreground
+            font.family: root.fontFamily
+            font.pixelSize: Style.font.body
+            wrapMode: Text.Wrap
+            horizontalAlignment: modelData.fromMe ? Text.AlignRight : Text.AlignLeft
+          }
+          Text {
+            width: parent.width
+            text: Model.formatSmsTime(modelData.date)
+            color: root.dim
+            font.family: root.fontFamily
+            font.pixelSize: Style.font.caption
+            horizontalAlignment: modelData.fromMe ? Text.AlignRight : Text.AlignLeft
+          }
+        }
+      }
+    }
+  }
+
+  Column {
+    visible: root.page === "compose" || root.page === "thread"
+    width: parent.width
+    spacing: Style.space(6)
+
+    TextField {
+      id: toField
+      visible: root.page === "compose"
+      width: parent.width
+      foreground: root.foreground
+      placeholderText: "Phone number"
+      text: root.composeTo
+      onTextChanged: root.composeTo = text
+    }
+
+    RowLayout {
+      width: parent.width
+      spacing: Style.space(6)
+      TextField {
+        id: draftField
+        Layout.fillWidth: true
+        foreground: root.foreground
+        placeholderText: "Message"
+        text: root.draft
+        onTextChanged: root.draft = text
+        onAccepted: root.sendDraft()
+      }
+      PanelActionButton {
+        iconText: "󰒊"
+        foreground: root.foreground
+        fontFamily: root.fontFamily
+        enabled: String(root.draft || "").trim() !== "" && (root.page === "thread" || String(root.composeTo || "").trim() !== "")
+        onClicked: root.sendDraft()
+      }
+    }
+  }
+}

@@ -63,13 +63,48 @@ function actionRows(device) {
   if (!device.reachable) {
     return [{ id: "unpair", label: "Unpair", icon: "󰌺" }]
   }
-  return [
+  var rows = [
+    { id: "messages", label: "Messages", icon: "󰍥" },
     { id: "ping", label: "Ping", icon: "󰐷" },
     { id: "ring", label: "Ring phone", icon: "󰂜" },
     { id: "clipboard", label: "Send clipboard", icon: "󰅌" },
     { id: "file", label: "Send file", icon: "󰈔" },
     { id: "unpair", label: "Unpair", icon: "󰌺" }
   ]
+  return rows
+}
+
+function conversationTitle(conversation) {
+  if (!conversation) return "Unknown"
+  if (conversation.title) return String(conversation.title)
+  var addresses = conversation.addresses
+  if (!addresses || typeof addresses.length !== "number") addresses = []
+  if (addresses.length === 0) return "Unknown"
+  if (addresses.length === 1) return String(addresses[0])
+  return String(addresses[0]) + " +" + (addresses.length - 1)
+}
+
+function previewText(conversation) {
+  var body = String((conversation && conversation.body) || "").replace(/\s+/g, " ").trim()
+  if (body === "" && conversation && conversation.attachmentCount > 0) return "Attachment"
+  return body
+}
+
+function formatSmsTime(ms) {
+  var n = Number(ms)
+  if (!isFinite(n) || n <= 0) return ""
+  var date = new Date(n)
+  var now = new Date()
+  var sameDay = date.getFullYear() === now.getFullYear() && date.getMonth() === now.getMonth() && date.getDate() === now.getDate()
+  if (sameDay) {
+    var hours = date.getHours()
+    var minutes = date.getMinutes()
+    var suffix = hours >= 12 ? "PM" : "AM"
+    hours = hours % 12
+    if (hours === 0) hours = 12
+    return hours + ":" + (minutes < 10 ? "0" : "") + minutes + " " + suffix
+  }
+  return (date.getMonth() + 1) + "/" + date.getDate()
 }
 
 function barIcon(installed, running, device) {

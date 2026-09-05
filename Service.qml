@@ -13,6 +13,9 @@ Item {
   property bool running: false
   property string announcedName: ""
   property var devices: []
+  property var conversations: []
+  property var messages: []
+  property bool smsLoading: false
   property bool refreshing: false
   property string actionStatus: ""
   property string lastError: ""
@@ -21,7 +24,7 @@ Item {
   property int _desired: -1
   readonly property bool active: _desired === -1 ? running : (_desired === 1)
   readonly property var primary: Model.primaryDevice(devices)
-  readonly property bool busy: statusProcess.running || actionProcess.running || setupProcess.running || pickerProcess.running
+  readonly property bool busy: statusProcess.running || actionProcess.running || setupProcess.running || pickerProcess.running || smsProcess.running
   readonly property int refreshIntervalSec: intSetting("refreshIntervalSec", 8, 3, 120)
   readonly property string helperPath: decodeURIComponent(Qt.resolvedUrl("connect.py").toString().replace(/^file:\/\//, ""))
   readonly property string setupPath: decodeURIComponent(Qt.resolvedUrl("setup.sh").toString().replace(/^file:\/\//, ""))
@@ -102,6 +105,36 @@ Item {
   function accept(id) { runAction(["accept", id], "Accepting…") }
   function reject(id) { runAction(["reject", id], "Declining…") }
   function sendClipboard(id) { runAction(["send-clipboard", id], "Sending clipboard…") }
+
+  function loadConversations(id) {
+    if (!id || smsProcess.running) return
+    smsLoading = true
+    lastError = ""
+    smsProcess._kind = "conversations"
+    smsProcess.command = helper(["conversations", id])
+    smsProcess.running = true
+  }
+
+  function loadThread(id, threadId) {
+    if (!id || smsProcess.running) return
+    smsLoading = true
+    lastError = ""
+    smsProcess._kind = "thread"
+    smsProcess.command = helper(["conversation", id, String(threadId)])
+    smsProcess.running = true
+  }
+
+  function smsReply(id, threadId, text) {
+    runAction(["sms-reply", id, String(threadId), text], "Sending…")
+  }
+
+  function smsSend(id, number, text) {
+    runAction(["sms-send", id, number, text], "Sending…")
+  }
+
+  function smsApp(id) {
+    runAction(["sms-app", id], "Opening messages…")
+  }
 
   function shareFile(id) {
     if (pickerProcess.running || !id) return
@@ -208,5 +241,24 @@ Item {
     id: setupProcess
     running: false
     command: []
+  }
+
+  Process {
+    id: smsProcess
+    property string _kind: ""
+    running: false
+    command: []
+    stdout: StdioCollector { id: smsStdout; waitForEnd: true }
+    onExited: function() {
+      root.smsLoading = false
+      var parsed = Model.parseStatus(smsStdout.text)
+      if (parsed && parsed.ok === false) {
+        root.lastError = String(parsed.error || parsed.lastError || "SMS failed")
+        return
+      }
+      root.lastError = ""
+      if (smsProcess._kind === "conversations") root.conversations = parsed.conversations || []
+      else if (smsProcess._kind === "thread") root.messages = parsed.messages || []
+    }
   }
 }

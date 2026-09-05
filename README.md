@@ -24,14 +24,15 @@ Then open **KDE Connect** on the phone, same Wi-Fi, and pair from the panel.
 - Left click: panel
 - Right click: refresh
 - Middle click: ping the primary phone
-- In the panel: ping, ring, send clipboard, send file, pair / unpair
-- Keys: `r` refresh, `p` ping, `f` ring, `c` clipboard, `s` send file, `i` install
+- In the panel: messages, ping, ring, send clipboard, send file, pair / unpair
+- Messages: inbox, thread, reply, new SMS (`m` from the device list)
+- Keys: `r` refresh, `m` messages, `p` ping, `f` ring, `c` clipboard, `s` send file, `i` install
 
 ## Why not the KDE app
 
 Omarchy already does this for Dropbox and Tailscale: a service plus a bar widget. GSConnect worked on GNOME because it lived in the shell. Connect is that shape for Omarchy.
 
-Remote input (phone as a touchpad) is still weak on Hyprland. File send, clipboard, ping, ring, battery, and pairing are the v1 surface.
+Remote input (phone as a touchpad) is still weak on Hyprland. SMS uses the same `kdeconnectd` conversations API as KDE's own app.
 
 ## Develop
 

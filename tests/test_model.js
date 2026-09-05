@@ -28,8 +28,13 @@ assert(sandbox.primaryDevice(status.devices).id === "a", "primary is reachable p
 assert(sandbox.batteryText(status.devices[1]) === "81% charging", "charging battery text")
 assert(sandbox.deviceMeta(status.devices[1]).indexOf("81%") !== -1, "meta includes battery")
 assert(sandbox.actionRows(status.devices[1]).some((row) => row.id === "ping"), "reachable paired has ping")
+assert(sandbox.actionRows(status.devices[1]).some((row) => row.id === "messages"), "reachable paired has messages")
 assert(sandbox.actionRows({ pairRequestedByPeer: true }).some((row) => row.id === "accept"), "incoming pair can accept")
 assert(sandbox.typeIcon("tablet") === "󰓹", "tablet icon")
 assert(sandbox.typeIcon("smartphone") === "󰄜", "phone icon")
+assert(sandbox.conversationTitle({ title: "Ada" }) === "Ada", "explicit title")
+assert(sandbox.conversationTitle({ addresses: ["+1", "+2"] }) === "+1 +1", "group title")
+assert(sandbox.previewText({ body: "  hello\nthere " }) === "hello there", "preview squashes whitespace")
+assert(sandbox.formatSmsTime(Date.now()).indexOf("M") !== -1, "today uses am/pm")
 
 console.log("ok")
