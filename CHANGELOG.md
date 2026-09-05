@@ -1,5 +1,9 @@
 # Changelog
 
+## 1.2.6
+
+Unpair asks Cancel / Unpair in the panel before dropping the phone. Cancel is selected first.
+
 ## 1.2.5
 
 Sending the same text twice no longer knocks the first optimistic line off the thread. Copy chips share one component. A ping or file share in flight no longer drops the next action.

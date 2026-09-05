@@ -53,6 +53,8 @@ Panel {
   property int deviceIndex: 0
   property int actionIndex: 0
   property bool cursorActive: false
+  property bool unpairConfirmOpen: false
+  property var unpairDevice: null
 
   implicitWidth: button.implicitWidth
   implicitHeight: button.implicitHeight
@@ -84,6 +86,10 @@ Panel {
   }
 
   function goBack() {
+    if (unpairConfirmOpen) {
+      cancelUnpair()
+      return
+    }
     if (view === "sms") {
       if (smsView.page !== "inbox") smsView.openInbox()
       else {
@@ -191,6 +197,10 @@ Panel {
 
   function moveCursor(dx, dy) {
     cursorActive = true
+    if (unpairConfirmOpen) {
+      if (dx !== 0) unpairConfirm.selectedIndex = unpairConfirm.selectedIndex === 0 ? 1 : 0
+      return
+    }
     if (view === "settings") {
       if (dx !== 0 && settingIndex === 2) {
         bumpRefresh(dx > 0 ? 1 : -1)
@@ -265,6 +275,11 @@ Panel {
   }
 
   function activateCursor() {
+    if (unpairConfirmOpen) {
+      if (unpairConfirm.selectedIndex === 0) cancelUnpair()
+      else confirmUnpair()
+      return
+    }
     if (view === "sms") {
       smsView.activateList()
       return
@@ -318,9 +333,30 @@ Panel {
     else if (action.id === "clipboard") connect.sendClipboard(id)
     else if (action.id === "file") connect.shareFile(id)
     else if (action.id === "pair") connect.pair(id)
-    else if (action.id === "unpair") connect.unpair(id)
+    else if (action.id === "unpair") requestUnpair(selectedDevice)
     else if (action.id === "accept") connect.accept(id)
     else if (action.id === "reject") connect.reject(id)
+  }
+
+  function requestUnpair(device) {
+    if (!device) return
+    unpairDevice = device
+    unpairConfirm.selectedIndex = 0
+    unpairConfirmOpen = true
+  }
+
+  function cancelUnpair() {
+    unpairConfirmOpen = false
+    unpairDevice = null
+    Qt.callLater(function() { if (keyCatcher) keyCatcher.forceActiveFocus() })
+  }
+
+  function confirmUnpair() {
+    var device = unpairDevice
+    unpairConfirmOpen = false
+    unpairDevice = null
+    if (device) connect.unpair(device.id)
+    Qt.callLater(function() { if (keyCatcher) keyCatcher.forceActiveFocus() })
   }
 
   function setDeviceCursor(index) {
@@ -338,9 +374,14 @@ Panel {
   onOpenedChanged: if (opened) {
     view = "main"
     smsDevice = null
+    unpairConfirmOpen = false
+    unpairDevice = null
     armCursor()
     connect.refresh()
     Qt.callLater(function() { keyCatcher.forceActiveFocus() })
+  } else {
+    unpairConfirmOpen = false
+    unpairDevice = null
   }
 
   Service {
@@ -403,8 +444,15 @@ Panel {
       blocked: smsView.editorFocused || notifyView.editorFocused
       onActivateRequested: root.activateCursor()
       onCloseRequested: root.goBack()
-      onTabRequested: function(direction) { root.switchPanel(direction) }
+      onTabRequested: function(direction) {
+        if (root.unpairConfirmOpen) {
+          unpairConfirm.selectedIndex = unpairConfirm.selectedIndex === 0 ? 1 : 0
+          return
+        }
+        root.switchPanel(direction)
+      }
       onTextKey: function(t) {
+        if (root.unpairConfirmOpen) return
         if (t === "r" || t === "R") {
           connect.refresh()
           if (root.view === "notifications" && root.selectedDevice)
@@ -828,6 +876,23 @@ Panel {
             }
           }
         }
+      }
+
+      ConfirmDialog {
+        id: unpairConfirm
+        anchors.fill: parent
+        z: 20
+        opened: root.unpairConfirmOpen
+        message: root.unpairDevice && root.unpairDevice.name
+          ? "Unpair " + root.unpairDevice.name + "?"
+          : "Unpair this phone?"
+        cancelText: "Cancel"
+        confirmText: "Unpair"
+        background: Color.background
+        foreground: root.foreground
+        fontFamily: root.fontFamily
+        onCanceled: root.cancelUnpair()
+        onConfirmed: root.confirmUnpair()
       }
     }
   }
