@@ -90,6 +90,13 @@ function previewText(conversation) {
   return body
 }
 
+function messageText(message) {
+  var body = String((message && message.body) || "")
+  if (body !== "") return body
+  if (message && message.attachmentCount > 0) return "Attachment"
+  return ""
+}
+
 function formatSmsTime(ms) {
   var n = Number(ms)
   if (!isFinite(n) || n <= 0) return ""

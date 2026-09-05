@@ -15,6 +15,7 @@ Item {
   property var devices: []
   property var conversations: []
   property var messages: []
+  property var _smsQueue: []
   property bool smsLoading: false
   property bool refreshing: false
   property string actionStatus: ""
@@ -106,22 +107,31 @@ Item {
   function reject(id) { runAction(["reject", id], "Declining…") }
   function sendClipboard(id) { runAction(["send-clipboard", id], "Sending clipboard…") }
 
-  function loadConversations(id) {
-    if (!id || smsProcess.running) return
-    smsLoading = true
+  function runSms(kind, args, seedMessages) {
     lastError = ""
-    smsProcess._kind = "conversations"
-    smsProcess.command = helper(["conversations", id])
+    if (kind === "thread" && seedMessages) messages = seedMessages
+    if (smsProcess.running) {
+      _smsQueue.push({ kind: kind, args: args })
+      smsLoading = true
+      return
+    }
+    smsLoading = true
+    smsProcess._kind = kind
+    smsProcess.command = helper(args)
     smsProcess.running = true
   }
 
-  function loadThread(id, threadId) {
-    if (!id || smsProcess.running) return
-    smsLoading = true
-    lastError = ""
-    smsProcess._kind = "thread"
-    smsProcess.command = helper(["conversation", id, String(threadId)])
-    smsProcess.running = true
+  function loadConversations(id) {
+    if (!id) return
+    runSms("conversations", ["conversations", id])
+  }
+
+  function loadThread(id, threadId, seed) {
+    if (!id || threadId === undefined || threadId === null || threadId === "") return
+    var preview = []
+    if (seed && (seed.body || seed.attachmentCount)) preview = [seed]
+    _smsQueue = _smsQueue.filter(function(item) { return item.kind !== "thread" })
+    runSms("thread", ["conversation", id, String(threadId)], preview)
   }
 
   function smsReply(id, threadId, text) {
@@ -250,15 +260,22 @@ Item {
     command: []
     stdout: StdioCollector { id: smsStdout; waitForEnd: true }
     onExited: function() {
-      root.smsLoading = false
       var parsed = Model.parseStatus(smsStdout.text)
       if (parsed && parsed.ok === false) {
         root.lastError = String(parsed.error || parsed.lastError || "SMS failed")
+      } else {
+        root.lastError = ""
+        if (smsProcess._kind === "conversations") root.conversations = parsed.conversations || []
+        else if (smsProcess._kind === "thread") root.messages = parsed.messages || []
+      }
+      if (root._smsQueue.length > 0) {
+        var next = root._smsQueue.shift()
+        root.smsProcess._kind = next.kind
+        root.smsProcess.command = root.helper(next.args)
+        root.smsProcess.running = true
         return
       }
-      root.lastError = ""
-      if (smsProcess._kind === "conversations") root.conversations = parsed.conversations || []
-      else if (smsProcess._kind === "thread") root.messages = parsed.messages || []
+      root.smsLoading = false
     }
   }
 }

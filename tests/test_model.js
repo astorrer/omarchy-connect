@@ -35,6 +35,8 @@ assert(sandbox.typeIcon("smartphone") === "󰄜", "phone icon")
 assert(sandbox.conversationTitle({ title: "Ada" }) === "Ada", "explicit title")
 assert(sandbox.conversationTitle({ addresses: ["+1", "+2"] }) === "+1 +1", "group title")
 assert(sandbox.previewText({ body: "  hello\nthere " }) === "hello there", "preview squashes whitespace")
+assert(sandbox.messageText({ body: "" }) === "", "empty message")
+assert(sandbox.messageText({ body: "", attachmentCount: 1 }) === "Attachment", "attachment placeholder")
 assert(sandbox.formatSmsTime(Date.now()).indexOf("M") !== -1, "today uses am/pm")
 
 console.log("ok")

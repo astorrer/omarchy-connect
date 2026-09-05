@@ -47,7 +47,7 @@ Column {
     draft = ""
     listIndex = 0
     cursorActive = true
-    if (deviceId !== "" && conversation) service.loadThread(deviceId, conversation.threadId)
+    if (deviceId !== "" && conversation) service.loadThread(deviceId, conversation.threadId, conversation)
     releaseEditor()
   }
 
@@ -275,6 +275,7 @@ Column {
             RowLayout {
               Layout.fillWidth: true
               Text {
+                textFormat: Text.PlainText
                 text: Model.conversationTitle(convRow.modelData)
                 color: root.foreground
                 font.family: root.fontFamily
@@ -290,6 +291,7 @@ Column {
               }
             }
             Text {
+              textFormat: Text.PlainText
               text: Model.previewText(convRow.modelData)
               color: convRow.modelData.read === 0 ? root.foreground : root.dim
               font.family: root.fontFamily
@@ -307,6 +309,16 @@ Column {
     visible: root.page === "thread"
     width: parent.width
     spacing: Style.space(6)
+
+    Text {
+      visible: !root.loading && root.messages.length === 0
+      width: parent.width
+      text: "No messages in this thread."
+      color: root.dim
+      font.family: root.fontFamily
+      font.pixelSize: Style.font.caption
+      wrapMode: Text.WordWrap
+    }
 
     Repeater {
       model: root.messages
@@ -336,11 +348,13 @@ Column {
             spacing: Style.space(2)
             Text {
               width: parent.width
-              text: String(msgRow.modelData.body || (msgRow.modelData.attachmentCount ? "Attachment" : ""))
+              textFormat: Text.PlainText
+              text: Model.messageText(msgRow.modelData)
               color: root.foreground
               font.family: root.fontFamily
               font.pixelSize: Style.font.body
               wrapMode: Text.Wrap
+              visible: text !== ""
               horizontalAlignment: msgRow.modelData.fromMe ? Text.AlignRight : Text.AlignLeft
             }
             Text {
