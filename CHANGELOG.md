@@ -1,5 +1,9 @@
 # Changelog
 
+## 1.2.11
+
+Inbox and notification titles sit on the right, across from the back button.
+
 ## 1.2.10
 
 The bar badge and Notifications count ignore SMS when those rows are hidden from the list.

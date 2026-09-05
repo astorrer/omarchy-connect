@@ -176,6 +176,7 @@ ColumnLayout {
 
     Text {
       Layout.fillWidth: true
+      horizontalAlignment: Text.AlignRight
       text: root.page === "reply" ? Model.notificationTitle(root.current) : "Notifications"
       color: root.foreground
       font.family: root.fontFamily

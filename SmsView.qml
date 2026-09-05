@@ -251,6 +251,7 @@ ColumnLayout {
 
     Text {
       Layout.fillWidth: true
+      horizontalAlignment: Text.AlignRight
       text: root.page === "compose" ? "New message" : (root.page === "thread" ? Model.conversationTitle(root.thread) : "Messages")
       color: root.foreground
       font.family: root.fontFamily
