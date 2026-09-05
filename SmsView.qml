@@ -86,6 +86,12 @@ ColumnLayout {
     })
   }
 
+  function scrollCursorIntoView() {
+    var item = currentItem()
+    if (!item || item === draftField || item === toField || item === backButton) return
+    Qt.callLater(function() { Model.scrollFlickToItem(threadFlick, item, Style.space(8)) })
+  }
+
   function inboxMax() {
     return 1 + conversations.length
   }
@@ -123,8 +129,11 @@ ColumnLayout {
       }
       var tMax = threadMax()
       listIndex = Math.max(0, Math.min(tMax, listIndex + dy))
-      if (listIndex === tMax) draftField.forceActiveFocus()
-      else {
+      if (listIndex === tMax) {
+        pinToNewest = true
+        draftField.forceActiveFocus()
+      } else {
+        pinToNewest = false
         draftField.focus = false
         releaseEditor()
       }

@@ -1,5 +1,19 @@
-var PLUGIN_VERSION = "1.1.2"
+var PLUGIN_VERSION = "1.1.3"
 var PROJECT_URL = "https://github.com/astorrer/omarchy-connect"
+
+function scrollFlickToItem(flick, item, margin) {
+  if (!flick || !item) return
+  var m = margin || 8
+  var point = item.mapToItem(flick.contentItem, 0, 0)
+  if (!point) return
+  var top = point.y
+  var bottom = top + Math.max(item.height || 0, item.implicitHeight || 0)
+  var viewTop = flick.contentY
+  var viewBottom = viewTop + flick.height
+  var maxY = Math.max(0, flick.contentHeight - flick.height)
+  if (top < viewTop + m) flick.contentY = Math.max(0, top - m)
+  else if (bottom > viewBottom - m) flick.contentY = Math.min(maxY, bottom + m - flick.height)
+}
 
 function parseStatus(raw) {
   var text = String(raw || "").trim()

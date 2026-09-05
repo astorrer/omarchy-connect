@@ -1,5 +1,9 @@
 # Changelog
 
+## 1.1.3
+
+Up and down in the inbox and in a thread follow the highlight inside that list. The reply field stays put.
+
 ## 1.1.2
 
 Arrow keys walk the button pad in two dimensions. Enter activates; Esc goes back.

@@ -178,8 +178,14 @@ Panel {
   }
 
   function scrollCursorIntoView() {
-    if (view === "sms" && smsView.page === "thread" && smsView.pinToNewest && smsView.listIndex >= (connect.messages || []).length)
+    if (view === "sms") {
+      smsView.scrollCursorIntoView()
       return
+    }
+    if (view === "notifications") {
+      notifyView.scrollCursorIntoView()
+      return
+    }
     scrollItemIntoView(currentItem())
   }
 

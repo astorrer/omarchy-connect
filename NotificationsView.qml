@@ -78,6 +78,12 @@ ColumnLayout {
     listIndex = Math.max(0, Math.min(listMax(), listIndex + dy))
   }
 
+  function scrollCursorIntoView() {
+    var item = currentItem()
+    if (!item || item === draftField || item === backButton) return
+    Qt.callLater(function() { Model.scrollFlickToItem(notifyFlick, item, Style.space(8)) })
+  }
+
   function activateList() {
     if (page === "reply") {
       sendDraft()
