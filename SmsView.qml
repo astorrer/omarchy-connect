@@ -27,7 +27,6 @@ Column {
   readonly property int listCount: page === "inbox" ? conversations.length + 2 : messages.length
 
   signal backRequested()
-  signal pageChanged(string page)
 
   width: parent ? parent.width : 0
   spacing: Style.space(10)
@@ -37,7 +36,6 @@ Column {
     thread = null
     listIndex = 0
     if (deviceId !== "") service.loadConversations(deviceId)
-    pageChanged(page)
   }
 
   function openThread(conversation) {
@@ -46,7 +44,6 @@ Column {
     draft = ""
     listIndex = 0
     if (deviceId !== "" && conversation) service.loadThread(deviceId, conversation.threadId)
-    pageChanged(page)
   }
 
   function openCompose() {
@@ -54,7 +51,6 @@ Column {
     thread = null
     composeTo = ""
     draft = ""
-    pageChanged(page)
   }
 
   function moveList(dy) {
