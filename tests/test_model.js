@@ -72,6 +72,16 @@ assert(sandbox.looksLikePhone("Ada") === false, "name is not a phone")
 assert(sandbox.contactLabel({ name: "Ada", phone: "+1" }) === "Ada", "contact label prefers name")
 assert(sandbox.filterContacts([{ name: "Gabby Storrer", phone: "+1-801", phones: ["+1-801"] }, { name: "Wyze", phone: "100" }], "gabb").length === 1, "filter contacts by name")
 assert(sandbox.filterContacts([{ name: "Ada", phone: "555-0100", phones: ["555-0100"] }], "555").length === 1, "filter contacts by number")
+assert(sandbox.phonesMatch("+18018658491", "801-865-8491") === true, "js phone match")
+assert(sandbox.phonesMatch("64241", "+18018658491") === false, "short code is not a match")
+assert(sandbox.findConversationForContact(
+  [{ threadId: 9, addresses: ["+1-801-865-8491"] }],
+  { name: "Gabby", phone: "8018658491", phones: ["8018658491", "+18018658491"] }
+).threadId === 9, "compose finds the existing thread")
+assert(sandbox.findConversationForContact(
+  [{ threadId: 9, addresses: ["+1-801-865-8491"] }],
+  { name: "Other", phone: "+15555550100", phones: ["+15555550100"] }
+) === null, "unknown number has no thread")
 assert(sandbox.conversationTitle({ title: "Ada" }) === "Ada", "explicit title")
 assert(sandbox.conversationTitle({ names: ["Ada", "Bob"] }) === "Ada, Bob", "names title")
 assert(sandbox.conversationTitle({ addresses: ["+1", "+2"] }) === "+1, +2", "group title")

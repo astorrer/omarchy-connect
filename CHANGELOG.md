@@ -1,5 +1,9 @@
 # Changelog
 
+## 1.2.18
+
+Picking a contact who already has a thread opens that thread instead of a blank compose.
+
 ## 1.2.17
 
 New message searches synced contacts by name. A number still works if you need it.

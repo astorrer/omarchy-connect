@@ -1,4 +1,4 @@
-var PLUGIN_VERSION = "1.2.17"
+var PLUGIN_VERSION = "1.2.18"
 var PROJECT_URL = "https://github.com/astorrer/omarchy-connect"
 
 function scrollFlickToItem(flick, item, margin) {
@@ -217,6 +217,49 @@ function heroPhrases(device, hideSms) {
 function looksLikePhone(text) {
   var digits = String(text || "").replace(/[\s\-()+]/g, "")
   return digits.length >= 7 && /^\d+$/.test(digits)
+}
+
+function canonicalizePhone(number) {
+  var text = String(number || "").replace(/[\s\-()+]/g, "").replace(/^0+/, "")
+  return text || String(number || "")
+}
+
+function phonesMatch(left, right) {
+  var first = canonicalizePhone(left)
+  var second = canonicalizePhone(right)
+  if (!first || !second) return false
+  var longer = first.length >= second.length ? first : second
+  var shorter = first.length >= second.length ? second : first
+  if (shorter.length <= 6 && longer.length > 6) return false
+  return longer.slice(longer.length - shorter.length) === shorter
+}
+
+function contactPhones(contact) {
+  var phones = contact && contact.phones
+  if (phones && typeof phones.length === "number" && phones.length > 0) return phones
+  if (contact && contact.phone) return [contact.phone]
+  return []
+}
+
+function findConversationForPhones(conversations, phones) {
+  var list = conversations || []
+  var nums = phones || []
+  var i
+  var a
+  var p
+  for (i = 0; i < list.length; i++) {
+    var addresses = (list[i] && list[i].addresses) || []
+    for (a = 0; a < addresses.length; a++) {
+      for (p = 0; p < nums.length; p++) {
+        if (phonesMatch(addresses[a], nums[p])) return list[i]
+      }
+    }
+  }
+  return null
+}
+
+function findConversationForContact(conversations, contact) {
+  return findConversationForPhones(conversations, contactPhones(contact))
 }
 
 function contactLabel(contact) {

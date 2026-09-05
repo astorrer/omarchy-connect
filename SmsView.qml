@@ -90,6 +90,17 @@ ColumnLayout {
 
   function pickContact(contact) {
     if (!contact) return
+    var existing = Model.findConversationForContact(conversations, contact)
+    if (existing) {
+      var pending = String(draft || "")
+      openThread(existing)
+      if (pending !== "") {
+        draft = pending
+        if (draftField) draftField.text = pending
+      }
+      Qt.callLater(function() { if (draftField) draftField.forceActiveFocus() })
+      return
+    }
     composeName = Model.contactLabel(contact)
     composeNumber = String(contact.phone || "")
     composeTo = composeName || composeNumber
@@ -264,6 +275,17 @@ ColumnLayout {
     }
     var number = String(composeNumber || composeTo || "").trim()
     if (number === "") return
+    var existing = Model.findConversationForPhones(conversations, [number].concat(composeNumber ? [composeNumber] : []))
+    if (existing) {
+      openThread(existing)
+      pinToNewest = true
+      service.smsReply(deviceId, existing.threadId, text)
+      draft = ""
+      if (draftField) draftField.text = ""
+      listIndex = (service.messages || []).length
+      scrollToNewest()
+      return
+    }
     service.smsSend(deviceId, number, text)
     draft = ""
     if (draftField) draftField.text = ""
