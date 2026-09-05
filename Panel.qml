@@ -411,6 +411,8 @@ Panel {
             connect.loadNotifications(root.selectedDevice.id)
           else if (root.view === "sms" && smsView.page === "inbox" && root.selectedDevice)
             connect.loadConversations(root.selectedDevice.id)
+          else if (root.view === "sms" && smsView.page === "thread")
+            connect.refreshThread()
         }
         else if (t === "m" || t === "M") {
           if (root.selectedDevice) root.runAction({ id: "messages" })

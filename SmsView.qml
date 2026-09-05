@@ -174,10 +174,11 @@ ColumnLayout {
     var text = String(draft || "").trim()
     if (!service || !deviceId || text === "") return
     if (page === "thread" && thread) {
+      pinToNewest = true
       service.smsReply(deviceId, thread.threadId, text)
       draft = ""
-      pinToNewest = true
-      Qt.callLater(function() { if (root.thread) service.loadThread(deviceId, root.thread.threadId) })
+      listIndex = (service.messages || []).length
+      scrollToNewest()
       return
     }
     var number = String(composeTo || "").trim()

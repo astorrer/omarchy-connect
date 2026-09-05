@@ -38,6 +38,7 @@ Item {
   property string _pendingAction: ""
   property bool _reloadNotifications: false
   property string _notifyDeviceId: ""
+  property bool _reloadThread: false
 
   function setting(name, fallback) {
     var value = settings ? settings[name] : undefined
@@ -135,12 +136,48 @@ Item {
   function mergeMessages(incoming) {
     var byId = {}
     var i
-    for (i = 0; i < messages.length; i++) byId[String(messages[i].id)] = messages[i]
+    for (i = 0; i < messages.length; i++) {
+      if (messages[i] && messages[i].pending) continue
+      byId[String(messages[i].id)] = messages[i]
+    }
     for (i = 0; i < incoming.length; i++) byId[String(incoming[i].id)] = incoming[i]
     var rows = []
     for (var key in byId) rows.push(byId[key])
     rows.sort(function(a, b) { return (a.date || 0) - (b.date || 0) })
     messages = rows
+  }
+
+  function appendOutgoing(text) {
+    var body = String(text || "").trim()
+    if (body === "") return
+    var pending = {
+      id: -Date.now(),
+      body: body,
+      fromMe: true,
+      date: Date.now(),
+      type: 2,
+      read: 1,
+      threadId: smsThreadId,
+      addresses: [],
+      attachmentCount: 0,
+      attachments: [],
+      pending: true
+    }
+    messages = messages.concat([pending])
+  }
+
+  function dropPending() {
+    var rows = []
+    for (var i = 0; i < messages.length; i++) {
+      if (messages[i] && messages[i].pending) continue
+      rows.push(messages[i])
+    }
+    messages = rows
+  }
+
+  function refreshThread() {
+    if (!smsDeviceId || smsThreadId === undefined || smsThreadId === null || smsThreadId === "") return
+    runSms("refresh", ["conversation", smsDeviceId, String(smsThreadId), "0", "12"])
   }
 
   function loadThread(id, threadId, seed) {
@@ -162,6 +199,10 @@ Item {
   }
 
   function smsReply(id, threadId, text) {
+    smsDeviceId = id
+    smsThreadId = threadId
+    appendOutgoing(text)
+    _reloadThread = true
     runAction(["sms-reply", id, String(threadId), text], "Sending…")
   }
 
@@ -277,6 +318,8 @@ Item {
         root.lastError = String(parsed.error || parsed.lastError)
         root.actionStatus = ""
         root._desired = -1
+        if (root._reloadThread) root.dropPending()
+        root._reloadThread = false
       } else {
         root.lastError = ""
       }
@@ -284,6 +327,10 @@ Item {
       if (root._reloadNotifications && root._notifyDeviceId) {
         root._reloadNotifications = false
         root.loadNotifications(root._notifyDeviceId)
+      }
+      if (root._reloadThread) {
+        root._reloadThread = false
+        root.refreshThread()
       }
     }
   }
@@ -326,6 +373,7 @@ Item {
         if (smsProcess._kind === "conversations") root.conversations = parsed.conversations || []
         else if (smsProcess._kind === "notifications") root.notifications = parsed.notifications || []
         else if (smsProcess._kind === "thread") root.messages = parsed.messages || []
+        else if (smsProcess._kind === "refresh") root.mergeMessages(parsed.messages || [])
         else if (smsProcess._kind === "older") {
           var before = root.messages.length
           root.mergeMessages(parsed.messages || [])

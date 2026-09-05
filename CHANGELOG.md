@@ -1,5 +1,9 @@
 # Changelog
 
+## 1.2.1
+
+Sending a reply shows it in the thread immediately, then syncs with the phone. Reloading the thread is no longer required.
+
 ## 1.2.0
 
 SMS threads show image thumbnails and file chips for attachments. Inbox previews say Photo or the file name when there is no text.
