@@ -20,6 +20,7 @@ from .devices import (
     cmd_share_text,
     cmd_unpair,
 )
+from .media import cmd_media, cmd_media_action
 from .notifications import (
     cmd_notification_dismiss,
     cmd_notification_reply,
@@ -56,6 +57,8 @@ COMMANDS = {
     "notifications": cmd_notifications,
     "notification-dismiss": cmd_notification_dismiss,
     "notification-reply": cmd_notification_reply,
+    "media": cmd_media,
+    "media-action": cmd_media_action,
     "autostart": cmd_autostart,
 }
 

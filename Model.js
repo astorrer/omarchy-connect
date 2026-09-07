@@ -1,4 +1,4 @@
-var PLUGIN_VERSION = "1.2.22"
+var PLUGIN_VERSION = "1.3.0"
 var PROJECT_URL = "https://github.com/astorrer/konnectarchy"
 
 function scrollFlickToItem(flick, item, margin) {
@@ -76,6 +76,21 @@ function notificationBadgeCount(device, hideSms) {
   return Math.max(0, total - sms)
 }
 
+function mediaState(device) {
+  if (!device || !device.media || device.media.hasMedia !== true) return null
+  return device.media
+}
+
+function mediaMeta(media) {
+  if (!media) return ""
+  var parts = []
+  var artist = String(media.artist || "").trim()
+  var album = String(media.album || "").trim()
+  if (artist) parts.push(artist)
+  if (album) parts.push(album)
+  return parts.join(" · ")
+}
+
 function actionRows(device, hideSms) {
   if (!device) return []
   var rows = []
@@ -101,6 +116,14 @@ function actionRows(device, hideSms) {
       { id: "file", label: "File", icon: "󰈔", kind: "tool" },
       { id: "unpair", label: "Unpair", icon: "󰌺", kind: "danger" }
     ]
+    var media = mediaState(device)
+    if (media) {
+      rows.unshift(
+        { id: "media-previous", label: "Previous", icon: "󰒮", kind: "media" },
+        { id: "media-toggle", label: media.isPlaying ? "Pause" : "Play", icon: media.isPlaying ? "󰏸" : "󰐊", kind: "media" },
+        { id: "media-next", label: "Next", icon: "󰒭", kind: "media" }
+      )
+    }
   }
   for (var i = 0; i < rows.length; i++) rows[i].index = i
   return rows
@@ -128,6 +151,7 @@ function indexInKind(actions, kind, globalIndex) {
 
 function kindColumns(kind, count) {
   var n = Math.max(1, count || 1)
+  if (kind === "media") return Math.min(3, n)
   if (kind === "inbox" || kind === "choice") return Math.min(2, n)
   if (kind === "danger") return 1
   return n

@@ -44,6 +44,8 @@ Panel {
     return "No devices yet"
   }
   readonly property var inboxActions: Model.actionsOfKind(actions, "inbox")
+  readonly property var mediaActions: Model.actionsOfKind(actions, "media")
+  readonly property var mediaState: Model.mediaState(selectedDevice)
   readonly property var toolActions: Model.actionsOfKind(actions, "tool")
   readonly property var choiceActions: Model.actionsOfKind(actions, "choice")
   readonly property var dangerActions: Model.actionsOfKind(actions, "danger")
@@ -178,6 +180,7 @@ Panel {
       var action = actions[actionIndex]
       if (!action) return null
       if (action.kind === "inbox" && inboxRepeater) return inboxRepeater.itemAt(Model.indexInKind(actions, "inbox", actionIndex))
+      if (action.kind === "media" && mediaRepeater) return mediaRepeater.itemAt(Model.indexInKind(actions, "media", actionIndex))
       if (action.kind === "tool" && toolRepeater) return toolRepeater.itemAt(Model.indexInKind(actions, "tool", actionIndex))
       if (action.kind === "choice" && choiceRepeater) return choiceRepeater.itemAt(Model.indexInKind(actions, "choice", actionIndex))
       if (action.kind === "danger" && dangerRepeater) return dangerRepeater.itemAt(Model.indexInKind(actions, "danger", actionIndex))
@@ -340,6 +343,9 @@ Panel {
     }
     else if (action.id === "ping") connect.ping(id)
     else if (action.id === "ring") connect.ring(id)
+    else if (action.id === "media-previous") connect.mediaAction(id, "previous")
+    else if (action.id === "media-toggle") connect.mediaAction(id, "toggle")
+    else if (action.id === "media-next") connect.mediaAction(id, "next")
     else if (action.id === "clipboard") connect.sendClipboard(id)
     else if (action.id === "file") connect.shareFile(id)
     else if (action.id === "pair") connect.pair(id)
@@ -482,6 +488,9 @@ Panel {
           if (root.view === "notifications") notifyView.dismissCurrent()
         }
         else if (t === "p" || t === "P") { if (root.selectedDevice) connect.ping(root.selectedDevice.id) }
+        else if (t === "k" || t === "K") { if (root.selectedDevice) connect.mediaAction(root.selectedDevice.id, "toggle") }
+        else if (t === "[") { if (root.selectedDevice) connect.mediaAction(root.selectedDevice.id, "previous") }
+        else if (t === "]") { if (root.selectedDevice) connect.mediaAction(root.selectedDevice.id, "next") }
         else if (t === "f" || t === "F") { if (root.selectedDevice) connect.ring(root.selectedDevice.id) }
         else if (t === "y" || t === "Y") {
           if (root.view === "sms") smsView.copyPrimary()
@@ -662,6 +671,75 @@ Panel {
             PanelSeparator {
               visible: root.actions.length > 0
               foreground: root.foreground
+            }
+
+            Column {
+              visible: root.mediaActions.length > 0
+              width: parent.width
+              spacing: Style.space(8)
+
+              PanelSectionHeader {
+                text: "NOW PLAYING"
+                foreground: root.foreground
+                fontFamily: root.fontFamily
+              }
+
+              ColumnLayout {
+                width: parent.width
+                spacing: Style.space(1)
+                Text {
+                  textFormat: Text.PlainText
+                  text: root.mediaState ? root.mediaState.title : ""
+                  color: root.foreground
+                  font.family: root.fontFamily
+                  font.pixelSize: Style.font.body
+                  elide: Text.ElideRight
+                  Layout.fillWidth: true
+                }
+                Text {
+                  textFormat: Text.PlainText
+                  text: Model.mediaMeta(root.mediaState)
+                  visible: text !== ""
+                  color: root.dim
+                  font.family: root.fontFamily
+                  font.pixelSize: Style.font.caption
+                  elide: Text.ElideRight
+                  Layout.fillWidth: true
+                }
+              }
+
+              Row {
+                id: mediaRow
+                width: parent.width
+                spacing: Style.space(6)
+                Repeater {
+                  id: mediaRepeater
+                  model: root.mediaActions
+                  Button {
+                    required property var modelData
+                    required property int index
+                    width: mediaRow.width > 0 && root.mediaActions.length > 0
+                      ? (mediaRow.width - mediaRow.spacing * (root.mediaActions.length - 1)) / root.mediaActions.length
+                      : 0
+                    iconText: modelData.icon
+                    text: modelData.label
+                    fontSize: Style.font.caption
+                    iconSize: Style.font.title
+                    bordered: true
+                    fontFamily: root.fontFamily
+                    foreground: root.foreground
+                    horizontalPadding: Style.space(4)
+                    hasCursor: root.cursorActive && root.focusSection === "actions" && root.actionIndex === modelData.index
+                    onClicked: root.runAction(modelData)
+                    onHovered: function(on) {
+                      if (!on) return
+                      root.cursorActive = true
+                      root.focusSection = "actions"
+                      root.actionIndex = modelData.index
+                    }
+                  }
+                }
+              }
             }
 
             Grid {

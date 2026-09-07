@@ -22,6 +22,7 @@ from .bus import (
     try_call,
     unpack_string_list,
 )
+from .media import read_media
 from .util import emit, fail
 
 
@@ -104,6 +105,13 @@ def read_device(bus, device_id: str) -> dict:
         -1,
     )
     counts = _notification_counts(bus, device_id)
+    has_mpris = has_plugin(bus, device_id, "kdeconnect_mprisremote") or "mprisremote" in plugins
+    media = None
+    if has_mpris:
+        try:
+            media = read_media(bus, device_id)
+        except GLib.Error:
+            media = None
     return {
         "id": device_id,
         "name": str(get_prop(bus, path, DEVICE_IFACE, "name", device_id) or device_id),
@@ -119,6 +127,8 @@ def read_device(bus, device_id: str) -> dict:
         "plugins": plugins,
         "hasSms": has_plugin(bus, device_id, "kdeconnect_sms") or "sms" in plugins,
         "hasNotifications": has_plugin(bus, device_id, "kdeconnect_notifications") or "notifications" in plugins,
+        "hasMpris": has_mpris,
+        "media": media,
         "notificationCount": counts[0],
         "smsNotificationCount": counts[1],
     }

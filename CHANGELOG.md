@@ -1,8 +1,8 @@
 # Changelog
 
-## 1.2.22
+## 1.3.0
 
-Renamed the project to Konnectarchy and the plugin id to `io.github.astorrer.konnectarchy`; old installs must be removed and the plugin re-added. Thumbnails now cache under `~/.cache/konnectarchy/`.
+Renamed the project to Konnectarchy and the plugin id to `io.github.astorrer.konnectarchy`; old installs must be removed and the plugin re-added. Thumbnails now cache under `~/.cache/konnectarchy/`. Media control via the KDE Connect mprisremote plugin: when the phone is playing something, the panel shows a Now playing section with track, artist, and album, plus previous, play/pause, and next buttons. It disappears when nothing is playing.
 
 ## 1.2.21
 

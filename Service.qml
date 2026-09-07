@@ -119,6 +119,7 @@ Item {
   function accept(id) { runAction(["accept", id], "Accepting…") }
   function reject(id) { runAction(["reject", id], "Declining…") }
   function sendClipboard(id) { runAction(["send-clipboard", id], "Sending clipboard…") }
+  function mediaAction(id, action) { runAction(["media-action", id, action], "") }
 
   function openKdeConnect() {
     actionStatus = "Opening KDE Connect…"
