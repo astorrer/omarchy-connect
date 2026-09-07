@@ -6,9 +6,15 @@ set -euo pipefail
 
 AUTOSTART="$HOME/.config/autostart/kdeconnectd.desktop"
 AUTOSTART_MARK="Phone connect daemon for Konnectarchy"
+LEGACY_AUTOSTART_MARK="Phone connect daemon for Connect"
+
+owned_autostart() {
+  [[ -f $AUTOSTART ]] || return 1
+  grep -q "$AUTOSTART_MARK" "$AUTOSTART" || grep -q "$LEGACY_AUTOSTART_MARK" "$AUTOSTART"
+}
 
 uninstall() {
-  if [[ -f $AUTOSTART ]] && grep -q "$AUTOSTART_MARK" "$AUTOSTART"; then
+  if owned_autostart; then
     rm -f "$AUTOSTART"
     echo "Removed $AUTOSTART"
   else

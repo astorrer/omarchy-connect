@@ -1,6 +1,6 @@
 # Konnectarchy
 
-Pair a phone to the Omarchy bar over the KDE Connect protocol. Notifications, SMS, ping, ring, clipboard, and file share live in the panel. Pairing still uses `kdeconnectd`.
+Pair a phone to the Omarchy bar over the KDE Connect protocol. Notifications, SMS, media, ping, ring, clipboard, and file share live in the panel. Pairing still uses `kdeconnectd`.
 
 ![Konnectarchy panel](preview.png)
 
@@ -24,13 +24,14 @@ For names in SMS: KDE Connect → this computer → **Contacts**. Grant permissi
 - New message looks up names from synced contacts. You can still type a number.
 - 2FA codes and http(s) links get a copy chip. They are copied, never opened.
 - Notifications, messages, ping, ring, clipboard, and file share are in the panel.
+- When the phone is playing something, Now playing shows the track with previous, play/pause, and next. It hides when idle.
 - Desktop popups from KDE Connect still appear. The panel keeps the ones that are still on the phone.
 
 Keys inside the panel:
 
 - Arrows or `h` `j` `k` `l` move the highlight, including left/right on the button pad.
 - Enter activates. Esc goes back.
-- `n` notifications · `m` messages · `d` dismiss · `y` copy code or link · `p` ping · `f` ring · `c` clipboard · `s` send file · `r` refresh · `,` settings
+- `n` notifications · `m` messages · `d` dismiss · `y` copy code or link · `p` ping · `f` ring · `c` clipboard · `s` send file · `t` play/pause · `[` previous · `]` next · `r` refresh · `,` settings
 
 The version in the footer opens the project page.
 

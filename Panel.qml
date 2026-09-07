@@ -488,7 +488,7 @@ Panel {
           if (root.view === "notifications") notifyView.dismissCurrent()
         }
         else if (t === "p" || t === "P") { if (root.selectedDevice) connect.ping(root.selectedDevice.id) }
-        else if (t === "k" || t === "K") { if (root.selectedDevice) connect.mediaAction(root.selectedDevice.id, "toggle") }
+        else if (t === "t" || t === "T") { if (root.selectedDevice) connect.mediaAction(root.selectedDevice.id, "toggle") }
         else if (t === "[") { if (root.selectedDevice) connect.mediaAction(root.selectedDevice.id, "previous") }
         else if (t === "]") { if (root.selectedDevice) connect.mediaAction(root.selectedDevice.id, "next") }
         else if (t === "f" || t === "F") { if (root.selectedDevice) connect.ring(root.selectedDevice.id) }

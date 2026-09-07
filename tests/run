@@ -23,7 +23,8 @@ run "manifest" python3 tests/test_manifest.py
 run "contacts" python3 tests/test_contacts.py
 run "messages" python3 tests/test_messages.py
 run "notifications" python3 tests/test_notifications.py
-  run "media" python3 tests/test_media.py
+run "media" python3 tests/test_media.py
+run "setup" python3 tests/test_setup.py
 
 if command -v omarchy >/dev/null 2>&1; then
   run "plugin-validate" omarchy plugin validate "$ROOT"
