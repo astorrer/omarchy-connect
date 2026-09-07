@@ -9,8 +9,8 @@ import "Model.js" as Model
 
 Panel {
   id: root
-  moduleName: "io.github.astorrer.connect"
-  ipcTarget: "io.github.astorrer.connect"
+  moduleName: "io.github.astorrer.konnectarchy"
+  ipcTarget: "io.github.astorrer.konnectarchy"
   manageIpc: false
 
   readonly property bool hideWhenDisconnected: !!setting("hideWhenDisconnected", false)

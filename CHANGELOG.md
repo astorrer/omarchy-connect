@@ -2,7 +2,7 @@
 
 ## 1.2.22
 
-Renamed the project to Konnectarchy. Thumbnails now cache under `~/.cache/konnectarchy/`; the plugin id is unchanged.
+Renamed the project to Konnectarchy and the plugin id to `io.github.astorrer.konnectarchy`; old installs must be removed and the plugin re-added. Thumbnails now cache under `~/.cache/konnectarchy/`.
 
 ## 1.2.21
 

@@ -21,7 +21,7 @@ uninstall() {
   echo "  - ~/.local/share/kpeoplevcard/kdeconnect-* (synced contacts)"
   echo
   echo "Remove the plugin with:"
-  echo "  omarchy plugin remove io.github.astorrer.connect"
+  echo "  omarchy plugin remove io.github.astorrer.konnectarchy"
 }
 
 if [[ ${1:-} == uninstall ]]; then

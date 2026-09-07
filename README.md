@@ -46,13 +46,13 @@ Open from the gear in the panel:
 ## Remove
 
 ```sh
-omarchy plugin remove io.github.astorrer.connect
+omarchy plugin remove io.github.astorrer.konnectarchy
 ```
 
 That only removes the plugin. To drop the autostart file this plugin wrote:
 
 ```sh
-~/.config/omarchy/plugins/io.github.astorrer.connect/setup.sh uninstall
+~/.config/omarchy/plugins/io.github.astorrer.konnectarchy/setup.sh uninstall
 ```
 
 The `kdeconnect` package, any ufw rules, and synced contacts stay unless you remove them yourself.
