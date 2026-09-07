@@ -1,0 +1,17 @@
+target-version = "py312"
+extend-exclude = ["__pycache__"]
+
+[lint]
+# Keep it narrow: real errors (E4/E7/E9/F), import order (I), and a couple of
+# footgun rules. No formatting enforcement, no opinionated style rules.
+select = ["E4", "E7", "E9", "F", "I", "EXE"]
+ignore = [
+    "E741", # l vs 1 in DBus names is fine
+    "E402", # gi.require_version must run before "from gi.repository import ..."
+]
+
+[lint.per-file-ignores]
+"tests/*" = ["EXE001"] # test scripts run via ./tests/run
+
+[format]
+quote-style = "preserve"

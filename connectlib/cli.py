@@ -7,6 +7,7 @@ import gi
 gi.require_version("Gio", "2.0")
 from gi.repository import GLib
 
+from .contacts import cmd_contacts
 from .daemon import cmd_autostart, cmd_start, cmd_status, cmd_stop
 from .devices import (
     cmd_accept,
@@ -19,9 +20,18 @@ from .devices import (
     cmd_share_text,
     cmd_unpair,
 )
-from .contacts import cmd_contacts
-from .notifications import cmd_notification_dismiss, cmd_notification_reply, cmd_notifications
-from .sms import cmd_conversation, cmd_conversations, cmd_sms_app, cmd_sms_reply, cmd_sms_send
+from .notifications import (
+    cmd_notification_dismiss,
+    cmd_notification_reply,
+    cmd_notifications,
+)
+from .sms import (
+    cmd_conversation,
+    cmd_conversations,
+    cmd_sms_app,
+    cmd_sms_reply,
+    cmd_sms_send,
+)
 from .util import fail
 
 COMMANDS = {
