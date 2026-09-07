@@ -1,18 +1,18 @@
 #!/bin/bash
 # Install kdeconnect, open the discovery ports, start the daemon, and autostart it.
-# `setup.sh uninstall` only undoes Connect-owned files. It does not remove kdeconnect.
+# `setup.sh uninstall` only undoes Konnectarchy-owned files. It does not remove kdeconnect.
 
 set -euo pipefail
 
 AUTOSTART="$HOME/.config/autostart/kdeconnectd.desktop"
-AUTOSTART_MARK="Phone connect daemon for Connect"
+AUTOSTART_MARK="Phone connect daemon for Konnectarchy"
 
 uninstall() {
   if [[ -f $AUTOSTART ]] && grep -q "$AUTOSTART_MARK" "$AUTOSTART"; then
     rm -f "$AUTOSTART"
     echo "Removed $AUTOSTART"
   else
-    echo "No Connect autostart entry found."
+    echo "No Konnectarchy autostart entry found."
   fi
   echo
   echo "Left in place (shared, or yours to decide):"
@@ -70,4 +70,4 @@ if ! pgrep -u "$USER" -x kdeconnectd >/dev/null; then
 fi
 
 echo
-echo "Connect is ready. Open KDE Connect on the phone, on the same Wi-Fi, and pair from the bar."
+echo "Konnectarchy is ready. Open KDE Connect on the phone, on the same Wi-Fi, and pair from the bar."

@@ -166,7 +166,7 @@ def cmd_ping(args: list[str]) -> None:
         bus,
         plugin_path(device_id, "ping"),
         "org.kde.kdeconnect.device.ping",
-        [("sendPing", None), ("sendPing", GLib.Variant("(s)", ("Ping from Connect",)))],
+        [("sendPing", None), ("sendPing", GLib.Variant("(s)", ("Ping from Konnectarchy",)))],
     )
     emit({"ok": True})
 
