@@ -4,7 +4,7 @@ Instructions for AI coding agents working in this repository.
 
 ## Project
 
-Connect (now named **Konnectarchy**) is an Omarchy bar-widget plugin that pairs a phone over the KDE
+Konnectarchy is an Omarchy bar-widget plugin that pairs a phone over the KDE
 Connect protocol. `Panel.qml` (and the other `.qml` files at the root) form
 the UI, loaded via `manifest.json`. The Python package `connectlib/` talks to
 `kdeconnectd` and provides the CLI entry point `connect.py`.

@@ -21,7 +21,7 @@ function parseStatus(raw) {
   try {
     var parsed = JSON.parse(text)
   } catch (error) {
-    return { ok: false, lastError: "Could not read Connect status" }
+    return { ok: false, lastError: "Could not read Konnectarchy status" }
   }
   if (!parsed || typeof parsed !== "object") return { ok: false, lastError: "Bad status payload" }
   parsed.ok = parsed.ok !== false
