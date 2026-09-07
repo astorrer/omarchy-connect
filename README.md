@@ -2,7 +2,7 @@
 
 Pair a phone to the Omarchy bar over the KDE Connect protocol. Notifications, SMS, media, ping, ring, clipboard, and file share live in the panel. Pairing still uses `kdeconnectd`.
 
-![Konnectarchy panel](preview.png)
+![Konnectarchy panel](panel.png)
 
 ## Install
 
