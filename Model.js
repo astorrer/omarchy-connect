@@ -120,7 +120,7 @@ function actionRows(device, hideSms) {
     if (media) {
       rows.unshift(
         { id: "media-previous", label: "Previous", icon: "󰒮", kind: "media" },
-        { id: "media-toggle", label: media.isPlaying ? "Pause" : "Play", icon: media.isPlaying ? "󰏸" : "󰐊", kind: "media" },
+        { id: "media-toggle", label: media.isPlaying ? "Pause" : "Play", icon: media.isPlaying ? "󰏤" : "󰐊", kind: "media" },
         { id: "media-next", label: "Next", icon: "󰒭", kind: "media" }
       )
     }

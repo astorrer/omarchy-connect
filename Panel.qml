@@ -740,6 +740,14 @@ Panel {
                   }
                 }
               }
+
+              Rectangle {
+                visible: root.mediaActions.length > 0
+                width: parent.width
+                height: 1
+                color: root.dim
+                opacity: 0.35
+              }
             }
 
             Grid {

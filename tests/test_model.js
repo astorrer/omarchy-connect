@@ -70,7 +70,7 @@ assert(sandbox.mediaState({ paired: true, reachable: true, media: { hasMedia: fa
 const playing = { paired: true, reachable: true, media: { hasMedia: true, title: "Song", artist: "Artist", album: "Album", isPlaying: true } }
 const mediaRows = sandbox.actionRows(playing)
 assert(mediaRows[0].kind === "media" && mediaRows[0].id === "media-previous", "media rows lead the pad")
-assert(mediaRows[1].label === "Pause" && mediaRows[1].icon === "󰏸", "pause label while playing")
+assert(mediaRows[1].label === "Pause" && mediaRows[1].icon === "󰏤", "pause label while playing")
 assert(sandbox.actionRows({ paired: true, reachable: true, media: { hasMedia: true, title: "Song", isPlaying: false } })[1].label === "Play", "play label while paused")
 assert(sandbox.actionsOfKind(mediaRows, "media").length === 3, "three media controls")
 assert(sandbox.kindColumns("media", 3) === 3, "media pads to three columns")
