@@ -4,7 +4,7 @@ import base64
 import re
 from pathlib import Path
 
-THUMB_DIR = Path.home() / ".cache" / "omarchy-connect" / "thumbs"
+THUMB_DIR = Path.home() / ".cache" / "konnectarchy" / "thumbs"
 _SAFE_NAME = re.compile(r"[^A-Za-z0-9._-]+")
 
 

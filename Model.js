@@ -1,5 +1,5 @@
-var PLUGIN_VERSION = "1.2.21"
-var PROJECT_URL = "https://github.com/astorrer/omarchy-connect"
+var PLUGIN_VERSION = "1.2.22"
+var PROJECT_URL = "https://github.com/astorrer/konnectarchy"
 
 function scrollFlickToItem(flick, item, margin) {
   if (!flick || !item) return

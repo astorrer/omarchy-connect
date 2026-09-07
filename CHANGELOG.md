@@ -1,5 +1,9 @@
 # Changelog
 
+## 1.2.22
+
+Renamed the project to Konnectarchy. Thumbnails now cache under `~/.cache/konnectarchy/`; the plugin id is unchanged.
+
 ## 1.2.21
 
 Inbox highlight stays on the footer tools when conversations load. Compose will not send a contact name as a phone number, and a late thread fetch cannot overwrite the open chat.

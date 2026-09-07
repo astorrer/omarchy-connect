@@ -1,16 +1,16 @@
-# Connect
+# Konnectarchy
 
 Pair a phone to the Omarchy bar over the KDE Connect protocol. Notifications, SMS, ping, ring, clipboard, and file share live in the panel. Pairing still uses `kdeconnectd`.
 
-![Connect panel](preview.png)
+![Konnectarchy panel](preview.png)
 
 ## Install
 
 ```sh
-omarchy plugin add https://github.com/astorrer/omarchy-connect.git --enable
+omarchy plugin add https://github.com/astorrer/konnectarchy.git --enable
 ```
 
-Click **Install Connect** in the panel. That installs `kdeconnect`, opens TCP/UDP `1714–1764` if `ufw` is active, and starts the daemon.
+Click **Install Konnectarchy** in the panel. That installs `kdeconnect`, opens TCP/UDP `1714–1764` if `ufw` is active, and starts the daemon.
 
 On the phone, install **KDE Connect**, join the same Wi-Fi, and pair from the panel.
 

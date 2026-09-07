@@ -26,7 +26,7 @@ Panel {
   readonly property bool phoneLive: !!(primary && primary.paired && primary.reachable)
   readonly property color barIconColor: phoneLive ? (bar ? bar.foreground : foreground) : dim
   readonly property bool headerHasCursor: cursorActive && focusSection === "header" && connect.installed
-  readonly property string toggleHint: connect.active ? "Stop Connect" : "Start Connect"
+  readonly property string toggleHint: connect.active ? "Stop Konnectarchy" : "Start Konnectarchy"
   readonly property var selectedDevice: {
     if (connect.devices.length === 0) return null
     return connect.devices[Math.max(0, Math.min(deviceIndex, connect.devices.length - 1))]
@@ -413,7 +413,7 @@ Panel {
     id: button
     anchors.fill: parent
     bar: root.bar
-    tooltipText: "Connect"
+    tooltipText: "Konnectarchy"
     iconComponent: Component {
       Item {
         ConnectIcon {
@@ -570,7 +570,7 @@ Panel {
             PanelHero {
               id: hero
               width: parent.width
-              title: "Connect"
+              title: "Konnectarchy"
               meta: connect.active ? root.heroPhraseText : "Turned off"
               foreground: root.foreground
               fontFamily: root.fontFamily
@@ -785,7 +785,7 @@ Panel {
                 anchors.right: parent.right
                 spacing: Style.space(8)
                 Text {
-                  text: "Connect " + Model.PLUGIN_VERSION
+                  text: "Konnectarchy " + Model.PLUGIN_VERSION
                   color: root.dim
                   font.family: root.fontFamily
                   font.pixelSize: Style.font.caption
@@ -1013,7 +1013,7 @@ Panel {
         Layout.fillWidth: true
         spacing: Style.space(1)
         Text {
-          text: "Install Connect"
+          text: "Install Konnectarchy"
           color: root.foreground
           font.family: root.fontFamily
           font.pixelSize: Style.font.body
